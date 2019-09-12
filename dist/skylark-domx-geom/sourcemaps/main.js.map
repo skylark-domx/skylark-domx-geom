@@ -1,0 +1,1 @@
+{"version":3,"sources":["main.js"],"names":["define","geom"],"mappings":";;;;;;;AAAAA,QACC,UACC,SAASC,GACV,OAAOA","file":"../main.js","sourcesContent":["define([\r\n\t\"./geom\"\r\n],function(geom){\r\n\treturn geom;\r\n});"]}
