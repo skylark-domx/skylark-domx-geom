@@ -3231,15 +3231,21 @@ define('skylark-langx/strings',[
 ],function(strings){
     return strings;
 });
-define('skylark-langx-xhr/Xhr',[
+define('skylark-net-http/http',[
+  "skylark-langx-ns/ns",
+],function(skylark){
+	return skylark.attach("net.http",{});
+});
+define('skylark-net-http/Xhr',[
   "skylark-langx-ns/ns",
   "skylark-langx-types",
   "skylark-langx-objects",
   "skylark-langx-arrays",
   "skylark-langx-funcs",
   "skylark-langx-async/Deferred",
-  "skylark-langx-emitter/Evented"
-],function(skylark,types,objects,arrays,funcs,Deferred,Evented){
+  "skylark-langx-emitter/Evented",
+  "./http"
+],function(skylark,types,objects,arrays,funcs,Deferred,Evented,http){
 
     var each = objects.each,
         mixin = objects.mixin,
@@ -3587,19 +3593,12 @@ define('skylark-langx-xhr/Xhr',[
         return Xhr;
     })();
 
-	return skylark.attach("langx.Xhr",Xhr);	
+	return http.Xhr = Xhr;	
 });
-define('skylark-langx-xhr/main',[
-	"./Xhr"
-],function(Xhr){
-	return Xhr;
-});
-define('skylark-langx-xhr', ['skylark-langx-xhr/main'], function (main) { return main; });
-
 define('skylark-langx/Xhr',[
-    "skylark-langx-xhr"
-],function(xhr){
-    return xhr;
+    "skylark-net-http/Xhr"
+],function(Xhr){
+    return Xhr;
 });
 define('skylark-langx/Restful',[
     "./Evented",
@@ -4243,286 +4242,11 @@ define('skylark-domx-browser/main',[
 });
 define('skylark-domx-browser', ['skylark-domx-browser/main'], function (main) { return main; });
 
-define('skylark-domx-styler/styler',[
-    "skylark-langx/skylark",
-    "skylark-langx/langx"
-], function(skylark, langx) {
-    var every = Array.prototype.every,
-        forEach = Array.prototype.forEach,
-        camelCase = langx.camelCase,
-        dasherize = langx.dasherize;
-
-    function maybeAddPx(name, value) {
-        return (typeof value == "number" && !cssNumber[dasherize(name)]) ? value + "px" : value
-    }
-
-    var cssNumber = {
-            'column-count': 1,
-            'columns': 1,
-            'font-weight': 1,
-            'line-height': 1,
-            'opacity': 1,
-            'z-index': 1,
-            'zoom': 1
-        },
-        classReCache = {
-
-        };
-
-    function classRE(name) {
-        return name in classReCache ?
-            classReCache[name] : (classReCache[name] = new RegExp('(^|\\s)' + name + '(\\s|$)'));
-    }
-
-    // access className property while respecting SVGAnimatedString
-    /*
-     * Adds the specified class(es) to each element in the set of matched elements.
-     * @param {HTMLElement} node
-     * @param {String} value
-     */
-    function className(node, value) {
-        var klass = node.className || '',
-            svg = klass && klass.baseVal !== undefined
-
-        if (value === undefined) return svg ? klass.baseVal : klass
-        svg ? (klass.baseVal = value) : (node.className = value)
-    }
-
-    function disabled(elm, value ) {
-        if (arguments.length < 2) {
-            return !!this.dom.disabled;
-        }
-
-        elm.disabled = value;
-
-        return this;
-    }
-
-    var elementDisplay = {};
-
-    function defaultDisplay(nodeName) {
-        var element, display
-        if (!elementDisplay[nodeName]) {
-            element = document.createElement(nodeName)
-            document.body.appendChild(element)
-            display = getStyles(element).getPropertyValue("display")
-            element.parentNode.removeChild(element)
-            display == "none" && (display = "block")
-            elementDisplay[nodeName] = display
-        }
-        return elementDisplay[nodeName]
-    }
-    /*
-     * Display the matched elements.
-     * @param {HTMLElement} elm
-     */
-    function show(elm) {
-        styler.css(elm, "display", "");
-        if (styler.css(elm, "display") == "none") {
-            styler.css(elm, "display", defaultDisplay(elm.nodeName));
-        }
-        return this;
-    }
-
-    function isInvisible(elm) {
-        return styler.css(elm, "display") == "none" || styler.css(elm, "opacity") == 0;
-    }
-
-    /*
-     * Hide the matched elements.
-     * @param {HTMLElement} elm
-     */
-    function hide(elm) {
-        styler.css(elm, "display", "none");
-        return this;
-    }
-
-    /*
-     * Adds the specified class(es) to each element in the set of matched elements.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     */
-    function addClass(elm, name) {
-        if (!name) return this
-        var cls = className(elm),
-            names;
-        if (langx.isString(name)) {
-            names = name.split(/\s+/g);
-        } else {
-            names = name;
-        }
-        names.forEach(function(klass) {
-            var re = classRE(klass);
-            if (!cls.match(re)) {
-                cls += (cls ? " " : "") + klass;
-            }
-        });
-
-        className(elm, cls);
-
-        return this;
-    }
-
-    function getStyles( elem ) {
-
-        // Support: IE <=11 only, Firefox <=30 (#15098, #14150)
-        // IE throws on elements created in popups
-        // FF meanwhile throws on frame elements through "defaultView.getComputedStyle"
-        var view = elem.ownerDocument.defaultView;
-
-        if ( !view || !view.opener ) {
-            view = window;
-        }
-
-        return view.getComputedStyle( elem);
-    }
-
-
-    /*
-     * Get the value of a computed style property for the first element in the set of matched elements or set one or more CSS properties for every matched element.
-     * @param {HTMLElement} elm
-     * @param {String} property
-     * @param {Any} value
-     */
-    function css(elm, property, value) {
-        if (arguments.length < 3) {
-            var computedStyle,
-                computedStyle = getStyles(elm)
-            if (langx.isString(property)) {
-                return elm.style[camelCase(property)] || computedStyle.getPropertyValue(dasherize(property))
-            } else if (langx.isArrayLike(property)) {
-                var props = {}
-                forEach.call(property, function(prop) {
-                    props[prop] = (elm.style[camelCase(prop)] || computedStyle.getPropertyValue(dasherize(prop)))
-                })
-                return props
-            }
-        }
-
-        var css = '';
-        if (typeof(property) == 'string') {
-            if (!value && value !== 0) {
-                elm.style.removeProperty(dasherize(property));
-            } else {
-                css = dasherize(property) + ":" + maybeAddPx(property, value)
-            }
-        } else {
-            for (key in property) {
-                if (property[key] === undefined) {
-                    continue;
-                }
-                if (!property[key] && property[key] !== 0) {
-                    elm.style.removeProperty(dasherize(key));
-                } else {
-                    css += dasherize(key) + ':' + maybeAddPx(key, property[key]) + ';'
-                }
-            }
-        }
-
-        elm.style.cssText += ';' + css;
-        return this;
-    }
-
-    /*
-     * Determine whether any of the matched elements are assigned the given class.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     */
-    function hasClass(elm, name) {
-        var re = classRE(name);
-        return elm.className && elm.className.match(re);
-    }
-
-    /*
-     * Remove a single class, multiple classes, or all classes from each element in the set of matched elements.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     */
-    function removeClass(elm, name) {
-        if (name) {
-            var cls = className(elm),
-                names;
-
-            if (langx.isString(name)) {
-                names = name.split(/\s+/g);
-            } else {
-                names = name;
-            }
-
-            names.forEach(function(klass) {
-                var re = classRE(klass);
-                if (cls.match(re)) {
-                    cls = cls.replace(re, " ");
-                }
-            });
-
-            className(elm, cls.trim());
-        } else {
-            className(elm, "");
-        }
-
-        return this;
-    }
-
-    /*
-     * Add or remove one or more classes from the specified element.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     * @param {} when
-     */
-    function toggleClass(elm, name, when) {
-        var self = this;
-        name.split(/\s+/g).forEach(function(klass) {
-            if (when === undefined) {
-                when = !self.hasClass(elm, klass);
-            }
-            if (when) {
-                self.addClass(elm, klass);
-            } else {
-                self.removeClass(elm, klass)
-            }
-        });
-
-        return self;
-    }
-
-    var styler = function() {
-        return styler;
-    };
-
-    langx.mixin(styler, {
-        autocssfix: false,
-        cssHooks: {
-
-        },
-
-        addClass: addClass,
-        className: className,
-        css: css,
-        disabled : disabled,        
-        hasClass: hasClass,
-        hide: hide,
-        isInvisible: isInvisible,
-        removeClass: removeClass,
-        show: show,
-        toggleClass: toggleClass
-    });
-
-    return skylark.attach("domx.styler", styler);
-});
-define('skylark-domx-styler/main',[
-	"./styler"
-],function(styler){
-	return styler;
-});
-define('skylark-domx-styler', ['skylark-domx-styler/main'], function (main) { return main; });
-
 define('skylark-domx-noder/noder',[
     "skylark-langx/skylark",
     "skylark-langx/langx",
-    "skylark-domx-browser",
-    "skylark-domx-styler"
-], function(skylark, langx, browser, styler) {
+    "skylark-domx-browser"
+], function(skylark, langx, browser) {
     var isIE = !!navigator.userAgent.match(/Trident/g) || !!navigator.userAgent.match(/MSIE/g),
         fragmentRE = /^\s*<(\w+|!)[^>]*>/,
         singleTagRE = /^<(\w+)\s*\/?>(?:<\/\1>|)$/,
@@ -4903,6 +4627,16 @@ define('skylark-domx-noder/noder',[
       return (node === document.body) ? true : document.body.contains(node);
     }        
 
+    var blockNodes = ["div", "p", "ul", "ol", "li", "blockquote", "hr", "pre", "h1", "h2", "h3", "h4", "h5", "table"];
+
+    function isBlockNode(node) {
+        if (!node || node.nodeType === 3) {
+          return false;
+        }
+        return new RegExp("^(" + (blockNodes.join('|')) + ")$").test(node.nodeName.toLowerCase());
+    }
+
+
     /*   
      * Get the owner document object for the specified element.
      * @param {Node} elm
@@ -4954,31 +4688,10 @@ define('skylark-domx-noder/noder',[
      */
     function offsetParent(elm) {
         var parent = elm.offsetParent || document.body;
-        while (parent && !rootNodeRE.test(parent.nodeName) && styler.css(parent, "position") == "static") {
+        while (parent && !rootNodeRE.test(parent.nodeName) && document.defaultView.getComputedStyle(parent).position == "static") {
             parent = parent.offsetParent;
         }
         return parent;
-    }
-
-    /*   
-     *
-     * @param {Node} elm
-     * @param {Node} params
-     */
-    function overlay(elm, params) {
-        var overlayDiv = createElement("div", params);
-        styler.css(overlayDiv, {
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            zIndex: 0x7FFFFFFF,
-            opacity: 0.7
-        });
-        elm.appendChild(overlayDiv);
-        return overlayDiv;
-
     }
 
     /*   
@@ -5008,7 +4721,7 @@ define('skylark-domx-noder/noder',[
     }
 
     function scrollParent( elm, includeHidden ) {
-        var position = styler.css(elm,"position" ),
+        var position = document.defaultView.getComputedStyle(elm).position,
             excludeStaticParent = position === "absolute",
             overflowRegex = includeHidden ? /(auto|scroll|hidden)/ : /(auto|scroll)/,
             scrollParent = this.parents().filter( function() {
@@ -5025,7 +4738,17 @@ define('skylark-domx-noder/noder',[
             scrollParent;
     };
 
-        /*   
+
+    function reflow(elm) {
+        if (el == null) {
+          elm = document;
+        }
+        elm.offsetHeight;
+
+        return this;      
+    }
+
+    /*   
      * Replace an old node with the specified node.
      * @param {Node} node
      * @param {Node} oldNode
@@ -5033,65 +4756,6 @@ define('skylark-domx-noder/noder',[
     function replace(node, oldNode) {
         oldNode.parentNode.replaceChild(node, oldNode);
         return this;
-    }
-
-    /*   
-     * Replace an old node with the specified node.
-     * @param {HTMLElement} elm
-     * @param {Node} params
-     */
-    function throb(elm, params) {
-        params = params || {};
-        var self = this,
-            text = params.text,
-            style = params.style,
-            time = params.time,
-            callback = params.callback,
-            timer,
-
-            throbber = this.createElement("div", {
-                "class": params.className || "throbber"
-            }),
-            _overlay = overlay(throbber, {
-                "class": 'overlay fade'
-            }),
-            throb = this.createElement("div", {
-                "class": "throb"
-            }),
-            textNode = this.createTextNode(text || ""),
-            remove = function() {
-                if (timer) {
-                    clearTimeout(timer);
-                    timer = null;
-                }
-                if (throbber) {
-                    self.remove(throbber);
-                    throbber = null;
-                }
-            },
-            update = function(params) {
-                if (params && params.text && throbber) {
-                    textNode.nodeValue = params.text;
-                }
-            };
-        if (params.style) {
-            styler.css(throbber,params.style);
-        }
-        throb.appendChild(textNode);
-        throbber.appendChild(throb);
-        elm.appendChild(throbber);
-        var end = function() {
-            remove();
-            if (callback) callback();
-        };
-        if (time) {
-            timer = setTimeout(end, time);
-        }
-
-        return {
-            remove: remove,
-            update: update
-        };
     }
 
 
@@ -5221,13 +4885,13 @@ define('skylark-domx-noder/noder',[
 
         append: append,
 
+        reflow: reflow,
+
         remove: remove,
 
         removeChild : removeChild,
 
         replace: replace,
-
-        throb: throb,
 
         traverse: traverse,
 
@@ -5248,6 +4912,3853 @@ define('skylark-domx-noder/main',[
 	return noder;
 });
 define('skylark-domx-noder', ['skylark-domx-noder/main'], function (main) { return main; });
+
+define('skylark-domx-styler/styler',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx"
+], function(skylark, langx) {
+    var every = Array.prototype.every,
+        forEach = Array.prototype.forEach,
+        camelCase = langx.camelCase,
+        dasherize = langx.dasherize;
+
+    function maybeAddPx(name, value) {
+        return (typeof value == "number" && !cssNumber[dasherize(name)]) ? value + "px" : value
+    }
+
+    var cssNumber = {
+            'column-count': 1,
+            'columns': 1,
+            'font-weight': 1,
+            'line-height': 1,
+            'opacity': 1,
+            'z-index': 1,
+            'zoom': 1
+        },
+        classReCache = {
+
+        };
+
+    function classRE(name) {
+        return name in classReCache ?
+            classReCache[name] : (classReCache[name] = new RegExp('(^|\\s)' + name + '(\\s|$)'));
+    }
+
+    // access className property while respecting SVGAnimatedString
+    /*
+     * Adds the specified class(es) to each element in the set of matched elements.
+     * @param {HTMLElement} node
+     * @param {String} value
+     */
+    function className(node, value) {
+        var klass = node.className || '',
+            svg = klass && klass.baseVal !== undefined
+
+        if (value === undefined) return svg ? klass.baseVal : klass
+        svg ? (klass.baseVal = value) : (node.className = value)
+    }
+
+    function disabled(elm, value ) {
+        if (arguments.length < 2) {
+            return !!this.dom.disabled;
+        }
+
+        elm.disabled = value;
+
+        return this;
+    }
+
+    var elementDisplay = {};
+
+    function defaultDisplay(nodeName) {
+        var element, display
+        if (!elementDisplay[nodeName]) {
+            element = document.createElement(nodeName)
+            document.body.appendChild(element)
+            display = getStyles(element).getPropertyValue("display")
+            element.parentNode.removeChild(element)
+            display == "none" && (display = "block")
+            elementDisplay[nodeName] = display
+        }
+        return elementDisplay[nodeName]
+    }
+    /*
+     * Display the matched elements.
+     * @param {HTMLElement} elm
+     */
+    function show(elm) {
+        styler.css(elm, "display", "");
+        if (styler.css(elm, "display") == "none") {
+            styler.css(elm, "display", defaultDisplay(elm.nodeName));
+        }
+        return this;
+    }
+
+    function isInvisible(elm) {
+        return styler.css(elm, "display") == "none" || styler.css(elm, "opacity") == 0;
+    }
+
+    /*
+     * Hide the matched elements.
+     * @param {HTMLElement} elm
+     */
+    function hide(elm) {
+        styler.css(elm, "display", "none");
+        return this;
+    }
+
+    /*
+     * Adds the specified class(es) to each element in the set of matched elements.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     */
+    function addClass(elm, name) {
+        if (!name) return this
+        var cls = className(elm),
+            names;
+        if (langx.isString(name)) {
+            names = name.split(/\s+/g);
+        } else {
+            names = name;
+        }
+        names.forEach(function(klass) {
+            var re = classRE(klass);
+            if (!cls.match(re)) {
+                cls += (cls ? " " : "") + klass;
+            }
+        });
+
+        className(elm, cls);
+
+        return this;
+    }
+
+    function getStyles( elem ) {
+
+        // Support: IE <=11 only, Firefox <=30 (#15098, #14150)
+        // IE throws on elements created in popups
+        // FF meanwhile throws on frame elements through "defaultView.getComputedStyle"
+        var view = elem.ownerDocument.defaultView;
+
+        if ( !view || !view.opener ) {
+            view = window;
+        }
+
+        return view.getComputedStyle( elem);
+    }
+
+
+    /*
+     * Get the value of a computed style property for the first element in the set of matched elements or set one or more CSS properties for every matched element.
+     * @param {HTMLElement} elm
+     * @param {String} property
+     * @param {Any} value
+     */
+    function css(elm, property, value) {
+        if (arguments.length < 3) {
+            var computedStyle,
+                computedStyle = getStyles(elm)
+            if (langx.isString(property)) {
+                return elm.style[camelCase(property)] || computedStyle.getPropertyValue(dasherize(property))
+            } else if (langx.isArrayLike(property)) {
+                var props = {}
+                forEach.call(property, function(prop) {
+                    props[prop] = (elm.style[camelCase(prop)] || computedStyle.getPropertyValue(dasherize(prop)))
+                })
+                return props
+            }
+        }
+
+        var css = '';
+        if (typeof(property) == 'string') {
+            if (!value && value !== 0) {
+                elm.style.removeProperty(dasherize(property));
+            } else {
+                css = dasherize(property) + ":" + maybeAddPx(property, value)
+            }
+        } else {
+            for (key in property) {
+                if (property[key] === undefined) {
+                    continue;
+                }
+                if (!property[key] && property[key] !== 0) {
+                    elm.style.removeProperty(dasherize(key));
+                } else {
+                    css += dasherize(key) + ':' + maybeAddPx(key, property[key]) + ';'
+                }
+            }
+        }
+
+        elm.style.cssText += ';' + css;
+        return this;
+    }
+
+    /*
+     * Determine whether any of the matched elements are assigned the given class.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     */
+    function hasClass(elm, name) {
+        var re = classRE(name);
+        return elm.className && elm.className.match(re);
+    }
+
+    /*
+     * Remove a single class, multiple classes, or all classes from each element in the set of matched elements.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     */
+    function removeClass(elm, name) {
+        if (name) {
+            var cls = className(elm),
+                names;
+
+            if (langx.isString(name)) {
+                names = name.split(/\s+/g);
+            } else {
+                names = name;
+            }
+
+            names.forEach(function(klass) {
+                var re = classRE(klass);
+                if (cls.match(re)) {
+                    cls = cls.replace(re, " ");
+                }
+            });
+
+            className(elm, cls.trim());
+        } else {
+            className(elm, "");
+        }
+
+        return this;
+    }
+
+    /*
+     * Add or remove one or more classes from the specified element.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     * @param {} when
+     */
+    function toggleClass(elm, name, when) {
+        var self = this;
+        name.split(/\s+/g).forEach(function(klass) {
+            if (when === undefined) {
+                when = !self.hasClass(elm, klass);
+            }
+            if (when) {
+                self.addClass(elm, klass);
+            } else {
+                self.removeClass(elm, klass)
+            }
+        });
+
+        return self;
+    }
+
+    var styler = function() {
+        return styler;
+    };
+
+    langx.mixin(styler, {
+        autocssfix: false,
+        cssHooks: {
+
+        },
+
+        addClass: addClass,
+        className: className,
+        css: css,
+        disabled : disabled,        
+        hasClass: hasClass,
+        hide: hide,
+        isInvisible: isInvisible,
+        removeClass: removeClass,
+        show: show,
+        toggleClass: toggleClass
+    });
+
+    return skylark.attach("domx.styler", styler);
+});
+define('skylark-domx-finder/finder',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-browser",
+    "skylark-domx-noder"
+], function(skylark, langx, browser, noder, velm) {
+    var local = {},
+        filter = Array.prototype.filter,
+        slice = Array.prototype.slice,
+        nativeMatchesSelector = browser.matchesSelector;
+
+    /*
+    ---
+    name: Slick.Parser
+    description: Standalone CSS3 Selector parser
+    provides: Slick.Parser
+    ...
+    */
+    ;
+    (function() {
+
+        var parsed,
+            separatorIndex,
+            combinatorIndex,
+            reversed,
+            cache = {},
+            reverseCache = {},
+            reUnescape = /\\/g;
+
+        var parse = function(expression, isReversed) {
+            if (expression == null) return null;
+            if (expression.Slick === true) return expression;
+            expression = ('' + expression).replace(/^\s+|\s+$/g, '');
+            reversed = !!isReversed;
+            var currentCache = (reversed) ? reverseCache : cache;
+            if (currentCache[expression]) return currentCache[expression];
+            parsed = {
+                Slick: true,
+                expressions: [],
+                raw: expression,
+                reverse: function() {
+                    return parse(this.raw, true);
+                }
+            };
+            separatorIndex = -1;
+            while (expression != (expression = expression.replace(regexp, parser)));
+            parsed.length = parsed.expressions.length;
+            return currentCache[parsed.raw] = (reversed) ? reverse(parsed) : parsed;
+        };
+
+        var reverseCombinator = function(combinator) {
+            if (combinator === '!') return ' ';
+            else if (combinator === ' ') return '!';
+            else if ((/^!/).test(combinator)) return combinator.replace(/^!/, '');
+            else return '!' + combinator;
+        };
+
+        var reverse = function(expression) {
+            var expressions = expression.expressions;
+            for (var i = 0; i < expressions.length; i++) {
+                var exp = expressions[i];
+                var last = {
+                    parts: [],
+                    tag: '*',
+                    combinator: reverseCombinator(exp[0].combinator)
+                };
+
+                for (var j = 0; j < exp.length; j++) {
+                    var cexp = exp[j];
+                    if (!cexp.reverseCombinator) cexp.reverseCombinator = ' ';
+                    cexp.combinator = cexp.reverseCombinator;
+                    delete cexp.reverseCombinator;
+                }
+
+                exp.reverse().push(last);
+            }
+            return expression;
+        };
+
+        var escapeRegExp = (function() {
+            // Credit: XRegExp 0.6.1 (c) 2007-2008 Steven Levithan <http://stevenlevithan.com/regex/xregexp/> MIT License
+            var from = /(?=[\-\[\]{}()*+?.\\\^$|,#\s])/g,
+                to = '\\';
+            return function(string) {
+                return string.replace(from, to)
+            }
+        }())
+
+        var regexp = new RegExp(
+            "^(?:\\s*(,)\\s*|\\s*(<combinator>+)\\s*|(\\s+)|(<unicode>+|\\*)|\\#(<unicode>+)|\\.(<unicode>+)|\\[\\s*(<unicode1>+)(?:\\s*([*^$!~|]?=)(?:\\s*(?:([\"']?)(.*?)\\9)))?\\s*\\](?!\\])|(:+)(<unicode>+)(?:\\((?:(?:([\"'])([^\\13]*)\\13)|((?:\\([^)]+\\)|[^()]*)+))\\))?)"
+            .replace(/<combinator>/, '[' + escapeRegExp(">+~`!@$%^&={}\\;</") + ']')
+            .replace(/<unicode>/g, '(?:[\\w\\u00a1-\\uFFFF-]|\\\\[^\\s0-9a-f])')
+            .replace(/<unicode1>/g, '(?:[:\\w\\u00a1-\\uFFFF-]|\\\\[^\\s0-9a-f])')
+        );
+
+        function parser(
+            rawMatch,
+
+            separator,
+            combinator,
+            combinatorChildren,
+
+            tagName,
+            id,
+            className,
+
+            attributeKey,
+            attributeOperator,
+            attributeQuote,
+            attributeValue,
+
+            pseudoMarker,
+            pseudoClass,
+            pseudoQuote,
+            pseudoClassQuotedValue,
+            pseudoClassValue
+        ) {
+            if (separator || separatorIndex === -1) {
+                parsed.expressions[++separatorIndex] = [];
+                combinatorIndex = -1;
+                if (separator) return '';
+            }
+
+            if (combinator || combinatorChildren || combinatorIndex === -1) {
+                combinator = combinator || ' ';
+                var currentSeparator = parsed.expressions[separatorIndex];
+                if (reversed && currentSeparator[combinatorIndex])
+                    currentSeparator[combinatorIndex].reverseCombinator = reverseCombinator(combinator);
+                currentSeparator[++combinatorIndex] = {
+                    combinator: combinator,
+                    tag: '*'
+                };
+            }
+
+            var currentParsed = parsed.expressions[separatorIndex][combinatorIndex];
+
+            if (tagName) {
+                currentParsed.tag = tagName.replace(reUnescape, '');
+
+            } else if (id) {
+                currentParsed.id = id.replace(reUnescape, '');
+
+            } else if (className) {
+                className = className.replace(reUnescape, '');
+
+                if (!currentParsed.classList) currentParsed.classList = [];
+                if (!currentParsed.classes) currentParsed.classes = [];
+                currentParsed.classList.push(className);
+                currentParsed.classes.push({
+                    value: className,
+                    regexp: new RegExp('(^|\\s)' + escapeRegExp(className) + '(\\s|$)')
+                });
+
+            } else if (pseudoClass) {
+                pseudoClassValue = pseudoClassValue || pseudoClassQuotedValue;
+                pseudoClassValue = pseudoClassValue ? pseudoClassValue.replace(reUnescape, '') : null;
+
+                if (!currentParsed.pseudos) currentParsed.pseudos = [];
+                currentParsed.pseudos.push({
+                    key: pseudoClass.replace(reUnescape, ''),
+                    value: pseudoClassValue,
+                    type: pseudoMarker.length == 1 ? 'class' : 'element'
+                });
+
+            } else if (attributeKey) {
+                attributeKey = attributeKey.replace(reUnescape, '');
+                attributeValue = (attributeValue || '').replace(reUnescape, '');
+
+                var test, regexp;
+
+                switch (attributeOperator) {
+                    case '^=':
+                        regexp = new RegExp('^' + escapeRegExp(attributeValue));
+                        break;
+                    case '$=':
+                        regexp = new RegExp(escapeRegExp(attributeValue) + '$');
+                        break;
+                    case '~=':
+                        regexp = new RegExp('(^|\\s)' + escapeRegExp(attributeValue) + '(\\s|$)');
+                        break;
+                    case '|=':
+                        regexp = new RegExp('^' + escapeRegExp(attributeValue) + '(-|$)');
+                        break;
+                    case '=':
+                        test = function(value) {
+                            return attributeValue == value;
+                        };
+                        break;
+                    case '*=':
+                        test = function(value) {
+                            return value && value.indexOf(attributeValue) > -1;
+                        };
+                        break;
+                    case '!=':
+                        test = function(value) {
+                            return attributeValue != value;
+                        };
+                        break;
+                    default:
+                        test = function(value) {
+                            return !!value;
+                        };
+                }
+
+                if (attributeValue == '' && (/^[*$^]=$/).test(attributeOperator)) test = function() {
+                    return false;
+                };
+
+                if (!test) test = function(value) {
+                    return value && regexp.test(value);
+                };
+
+                if (!currentParsed.attributes) currentParsed.attributes = [];
+                currentParsed.attributes.push({
+                    key: attributeKey,
+                    operator: attributeOperator,
+                    value: attributeValue,
+                    test: test
+                });
+
+            }
+
+            return '';
+        };
+
+        // Slick NS
+
+        var Slick = (this.Slick || {});
+
+        Slick.parse = function(expression) {
+            return parse(expression);
+        };
+
+        Slick.escapeRegExp = escapeRegExp;
+
+        if (!this.Slick) this.Slick = Slick;
+
+    }).apply(local);
+
+
+    var simpleClassSelectorRE = /^\.([\w-]*)$/,
+        simpleIdSelectorRE = /^#([\w-]*)$/,
+        rinputs = /^(?:input|select|textarea|button)$/i,
+        rheader = /^h\d$/i,
+        slice = Array.prototype.slice;
+
+
+    local.parseSelector = local.Slick.parse;
+
+
+    var pseudos = local.pseudos = {
+        // custom pseudos
+        "button": function(elem) {
+            var name = elem.nodeName.toLowerCase();
+            return name === "input" && elem.type === "button" || name === "button";
+        },
+
+        'checked': function(elm) {
+            return !!elm.checked;
+        },
+
+        'contains': function(elm, idx, nodes, text) {
+            if ($(this).text().indexOf(text) > -1) return this
+        },
+
+        'disabled': function(elm) {
+            return !!elm.disabled;
+        },
+
+        'enabled': function(elm) {
+            return !elm.disabled;
+        },
+
+        'eq': function(elm, idx, nodes, value) {
+            return (idx == value);
+        },
+
+        'even': function(elm, idx, nodes, value) {
+            return (idx % 2) === 0;
+        },
+
+        'focus': function(elm) {
+            return document.activeElement === elm && (elm.href || elm.type || elm.tabindex);
+        },
+
+        'focusable': function( elm ) {
+            return noder.focusable(elm, elm.tabindex != null );
+        },
+
+        'first': function(elm, idx) {
+            return (idx === 0);
+        },
+
+        'gt': function(elm, idx, nodes, value) {
+            return (idx > value);
+        },
+
+        'has': function(elm, idx, nodes, sel) {
+            return find(elm, sel);
+        },
+
+        // Element/input types
+        "header": function(elem) {
+            return rheader.test(elem.nodeName);
+        },
+
+        'hidden': function(elm) {
+            return !local.pseudos["visible"](elm);
+        },
+
+        "input": function(elem) {
+            return rinputs.test(elem.nodeName);
+        },
+
+        'last': function(elm, idx, nodes) {
+            return (idx === nodes.length - 1);
+        },
+
+        'lt': function(elm, idx, nodes, value) {
+            return (idx < value);
+        },
+
+        'not': function(elm, idx, nodes, sel) {
+            return !matches(elm, sel);
+        },
+
+        'odd': function(elm, idx, nodes, value) {
+            return (idx % 2) === 1;
+        },
+
+        /*   
+         * Get the parent of each element in the current set of matched elements.
+         * @param {Object} elm
+         */
+        'parent': function(elm) {
+            return !!elm.parentNode;
+        },
+
+        'selected': function(elm) {
+            return !!elm.selected;
+        },
+
+        'tabbable': function(elm) {
+            var tabIndex = elm.tabindex,
+                hasTabindex = tabIndex != null;
+            return ( !hasTabindex || tabIndex >= 0 ) && noder.focusable( element, hasTabindex );
+        },
+
+        'text': function(elm) {
+            return elm.type === "text";
+        },
+
+        'visible': function(elm) {
+            return elm.offsetWidth && elm.offsetWidth
+        }
+    };
+
+    ["first", "eq", "last"].forEach(function(item) {
+        pseudos[item].isArrayFilter = true;
+    });
+
+
+
+    pseudos["nth"] = pseudos["eq"];
+
+    function createInputPseudo(type) {
+        return function(elem) {
+            var name = elem.nodeName.toLowerCase();
+            return name === "input" && elem.type === type;
+        };
+    }
+
+    function createButtonPseudo(type) {
+        return function(elem) {
+            var name = elem.nodeName.toLowerCase();
+            return (name === "input" || name === "button") && elem.type === type;
+        };
+    }
+
+    // Add button/input type pseudos
+    for (i in {
+        radio: true,
+        checkbox: true,
+        file: true,
+        password: true,
+        image: true
+    }) {
+        pseudos[i] = createInputPseudo(i);
+    }
+    for (i in {
+        submit: true,
+        reset: true
+    }) {
+        pseudos[i] = createButtonPseudo(i);
+    }
+
+
+    local.divide = function(cond) {
+        var nativeSelector = "",
+            customPseudos = [],
+            tag,
+            id,
+            classes,
+            attributes,
+            pseudos;
+
+
+        if (id = cond.id) {
+            nativeSelector += ("#" + id);
+        }
+        if (classes = cond.classes) {
+            for (var i = classes.length; i--;) {
+                nativeSelector += ("." + classes[i].value);
+            }
+        }
+        if (attributes = cond.attributes) {
+            for (var i = 0; i < attributes.length; i++) {
+                if (attributes[i].operator) {
+                    nativeSelector += ("[" + attributes[i].key + attributes[i].operator + JSON.stringify(attributes[i].value) + "]");
+                } else {
+                    nativeSelector += ("[" + attributes[i].key + "]");
+                }
+            }
+        }
+        if (pseudos = cond.pseudos) {
+            for (i = pseudos.length; i--;) {
+                part = pseudos[i];
+                if (this.pseudos[part.key]) {
+                    customPseudos.push(part);
+                } else {
+                    if (part.value !== undefined) {
+                        nativeSelector += (":" + part.key + "(" + JSON.stringify(part))
+                    }
+                }
+            }
+        }
+
+        if (tag = cond.tag) {
+            if (tag !== "*") {
+                nativeSelector = tag.toUpperCase() + nativeSelector;
+            }
+        }
+
+        if (!nativeSelector) {
+            nativeSelector = "*";
+        }
+
+        return {
+            nativeSelector: nativeSelector,
+            customPseudos: customPseudos
+        }
+
+    };
+
+    local.check = function(node, cond, idx, nodes, arrayFilte) {
+        var tag,
+            id,
+            classes,
+            attributes,
+            pseudos,
+
+            i, part, cls, pseudo;
+
+        if (!arrayFilte) {
+            if (tag = cond.tag) {
+                var nodeName = node.nodeName.toUpperCase();
+                if (tag == '*') {
+                    if (nodeName < '@') return false; // Fix for comment nodes and closed nodes
+                } else {
+                    if (nodeName != (tag || "").toUpperCase()) return false;
+                }
+            }
+
+            if (id = cond.id) {
+                if (node.getAttribute('id') != id) {
+                    return false;
+                }
+            }
+
+
+            if (classes = cond.classes) {
+                for (i = classes.length; i--;) {
+                    cls = node.getAttribute('class');
+                    if (!(cls && classes[i].regexp.test(cls))) return false;
+                }
+            }
+
+            if (attributes = cond.attributes) {
+                for (i = attributes.length; i--;) {
+                    part = attributes[i];
+                    if (part.operator ? !part.test(node.getAttribute(part.key)) : !node.hasAttribute(part.key)) return false;
+                }
+            }
+
+        }
+        if (pseudos = cond.pseudos) {
+            for (i = pseudos.length; i--;) {
+                part = pseudos[i];
+                if (pseudo = this.pseudos[part.key]) {
+                    if ((arrayFilte && pseudo.isArrayFilter) || (!arrayFilte && !pseudo.isArrayFilter)) {
+                        if (!pseudo(node, idx, nodes, part.value)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    if (!arrayFilte && !nativeMatchesSelector.call(node, part.key)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    local.match = function(node, selector) {
+
+        var parsed;
+
+        if (langx.isString(selector)) {
+            parsed = local.Slick.parse(selector);
+        } else {
+            parsed = selector;
+        }
+
+        if (!parsed) {
+            return true;
+        }
+
+        // simple (single) selectors
+        var expressions = parsed.expressions,
+            simpleExpCounter = 0,
+            i,
+            currentExpression;
+        for (i = 0;
+            (currentExpression = expressions[i]); i++) {
+            if (currentExpression.length == 1) {
+                var exp = currentExpression[0];
+                if (this.check(node, exp)) {
+                    return true;
+                }
+                simpleExpCounter++;
+            }
+        }
+
+        if (simpleExpCounter == parsed.length) {
+            return false;
+        }
+
+        var nodes = this.query(document, parsed),
+            item;
+        for (i = 0; item = nodes[i++];) {
+            if (item === node) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+
+    local.filterSingle = function(nodes, exp) {
+        var matchs = filter.call(nodes, function(node, idx) {
+            return local.check(node, exp, idx, nodes, false);
+        });
+
+        matchs = filter.call(matchs, function(node, idx) {
+            return local.check(node, exp, idx, matchs, true);
+        });
+        return matchs;
+    };
+
+    local.filter = function(nodes, selector) {
+        var parsed;
+
+        if (langx.isString(selector)) {
+            parsed = local.Slick.parse(selector);
+        } else {
+            return local.filterSingle(nodes, selector);
+        }
+
+        // simple (single) selectors
+        var expressions = parsed.expressions,
+            i,
+            currentExpression,
+            ret = [];
+        for (i = 0;
+            (currentExpression = expressions[i]); i++) {
+            if (currentExpression.length == 1) {
+                var exp = currentExpression[0];
+
+                var matchs = local.filterSingle(nodes, exp);
+
+                ret = langx.uniq(ret.concat(matchs));
+            } else {
+                throw new Error("not supported selector:" + selector);
+            }
+        }
+
+        return ret;
+
+    };
+
+    local.combine = function(elm, bit) {
+        var op = bit.combinator,
+            cond = bit,
+            node1,
+            nodes = [];
+
+        switch (op) {
+            case '>': // direct children
+                nodes = children(elm, cond);
+                break;
+            case '+': // next sibling
+                node1 = nextSibling(elm, cond, true);
+                if (node1) {
+                    nodes.push(node1);
+                }
+                break;
+            case '^': // first child
+                node1 = firstChild(elm, cond, true);
+                if (node1) {
+                    nodes.push(node1);
+                }
+                break;
+            case '~': // next siblings
+                nodes = nextSiblings(elm, cond);
+                break;
+            case '++': // next sibling and previous sibling
+                var prev = previousSibling(elm, cond, true),
+                    next = nextSibling(elm, cond, true);
+                if (prev) {
+                    nodes.push(prev);
+                }
+                if (next) {
+                    nodes.push(next);
+                }
+                break;
+            case '~~': // next siblings and previous siblings
+                nodes = siblings(elm, cond);
+                break;
+            case '!': // all parent nodes up to document
+                nodes = ancestors(elm, cond);
+                break;
+            case '!>': // direct parent (one level)
+                node1 = parent(elm, cond);
+                if (node1) {
+                    nodes.push(node1);
+                }
+                break;
+            case '!+': // previous sibling
+                nodes = previousSibling(elm, cond, true);
+                break;
+            case '!^': // last child
+                node1 = lastChild(elm, cond, true);
+                if (node1) {
+                    nodes.push(node1);
+                }
+                break;
+            case '!~': // previous siblings
+                nodes = previousSiblings(elm, cond);
+                break;
+            default:
+                var divided = this.divide(bit);
+                nodes = slice.call(elm.querySelectorAll(divided.nativeSelector));
+                if (divided.customPseudos) {
+                    for (var i = divided.customPseudos.length - 1; i >= 0; i--) {
+                        nodes = filter.call(nodes, function(item, idx) {
+                            return local.check(item, {
+                                pseudos: [divided.customPseudos[i]]
+                            }, idx, nodes, false)
+                        });
+
+                        nodes = filter.call(nodes, function(item, idx) {
+                            return local.check(item, {
+                                pseudos: [divided.customPseudos[i]]
+                            }, idx, nodes, true)
+                        });
+                    }
+                }
+                break;
+
+        }
+        return nodes;
+    }
+
+    local.query = function(node, selector, single) {
+
+
+        var parsed = this.Slick.parse(selector);
+
+        var
+            founds = [],
+            currentExpression, currentBit,
+            expressions = parsed.expressions;
+
+        for (var i = 0;
+            (currentExpression = expressions[i]); i++) {
+            var currentItems = [node],
+                found;
+            for (var j = 0;
+                (currentBit = currentExpression[j]); j++) {
+                found = langx.map(currentItems, function(item, i) {
+                    return local.combine(item, currentBit)
+                });
+                if (found) {
+                    currentItems = found;
+                }
+            }
+            if (found) {
+                founds = founds.concat(found);
+            }
+        }
+
+        return founds;
+    }
+
+    /*
+     * Get the nearest ancestor of the specified element,optional matched by a selector.
+     * @param {HTMLElement} node
+     * @param {String Optional } selector
+     * @param {Object} root
+     */
+    function ancestor(node, selector, root) {
+        var rootIsSelector = root && langx.isString(root);
+        while (node = node.parentNode) {
+            if (matches(node, selector)) {
+                return node;
+            }
+            if (root) {
+                if (rootIsSelector) {
+                    if (matches(node, root)) {
+                        break;
+                    }
+                } else if (node == root) {
+                    break;
+                }
+            }
+        }
+        return null;
+    }
+
+    /*
+     * Get the ancestors of the specitied element , optionally filtered by a selector.
+     * @param {HTMLElement} node
+     * @param {String Optional } selector
+     * @param {Object} root
+     */
+    function ancestors(node, selector, root) {
+        var ret = [],
+            rootIsSelector = root && langx.isString(root);
+        while ((node = node.parentNode) && (node.nodeType !== 9)) {
+            if (root) {
+                if (rootIsSelector) {
+                    if (matches(node, root)) {
+                        break;
+                    }
+                } else if (langx.isArrayLike(root)) {
+                    if (langx.inArray(node,root)>-1) {
+                        break;
+                    }
+                } else if (node == root) {
+                    break;
+                }
+            }
+            ret.push(node); // TODO
+        }
+
+        if (selector) {
+            ret = local.filter(ret, selector);
+        }
+        return ret;
+    }
+
+    /*
+     * Returns a element by its ID.
+     * @param {string} id
+     */
+    function byId(id, doc) {
+        doc = doc || noder.doc();
+        return doc.getElementById(id);
+    }
+
+    /*
+     * Get the children of the specified element , optionally filtered by a selector.
+     * @param {string} node
+     * @param {String optionlly} selector
+     */
+    function children(node, selector) {
+        var childNodes = node.childNodes,
+            ret = [];
+        for (var i = 0; i < childNodes.length; i++) {
+            var node = childNodes[i];
+            if (node.nodeType == 1) {
+                ret.push(node);
+            }
+        }
+        if (selector) {
+            ret = local.filter(ret, selector);
+        }
+        return ret;
+    }
+
+    function closest(node, selector) {
+        while (node && !(matches(node, selector))) {
+            node = node.parentNode;
+        }
+
+        return node;
+    }
+
+    /*
+     * Get the decendant of the specified element , optionally filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
+    function descendants(elm, selector) {
+        // Selector
+        try {
+            return slice.call(elm.querySelectorAll(selector));
+        } catch (matchError) {
+            //console.log(matchError);
+        }
+        return local.query(elm, selector);
+    }
+
+    /*
+     * Get the nearest decendent of the specified element,optional matched by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
+    function descendant(elm, selector) {
+        // Selector
+        try {
+            return elm.querySelector(selector);
+        } catch (matchError) {
+            //console.log(matchError);
+        }
+        var nodes = local.query(elm, selector);
+        if (nodes.length > 0) {
+            return nodes[0];
+        } else {
+            return null;
+        }
+    }
+
+    /*
+     * Get the descendants of each element in the current set of matched elements, filtered by a selector, jQuery object, or element.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
+    function find(elm, selector) {
+        if (!selector) {
+            selector = elm;
+            elm = document.body;
+        }
+        if (matches(elm, selector)) {
+            return elm;
+        } else {
+            return descendant(elm, selector);
+        }
+    }
+
+    /*
+     * Get the findAll of the specified element , optionally filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
+    function findAll(elm, selector) {
+        if (!selector) {
+            selector = elm;
+            elm = document.body;
+        }
+        return descendants(elm, selector);
+    }
+
+    /*
+     * Get the first child of the specified element , optionally filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     * @param {String} first
+     */
+    function firstChild(elm, selector, first) {
+        var childNodes = elm.childNodes,
+            node = childNodes[0];
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    return node;
+                }
+                if (first) {
+                    break;
+                }
+            }
+            node = node.nextSibling;
+        }
+
+        return null;
+    }
+
+    /*
+     * Get the last child of the specified element , optionally filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     * @param {String } last
+     */
+    function lastChild(elm, selector, last) {
+        var childNodes = elm.childNodes,
+            node = childNodes[childNodes.length - 1];
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    return node;
+                }
+                if (last) {
+                    break;
+                }
+            }
+            node = node.previousSibling;
+        }
+
+        return null;
+    }
+
+    /*
+     * Check the specified element against a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
+    function matches(elm, selector) {
+        if (!selector || !elm || elm.nodeType !== 1) {
+            return false
+        }
+
+        if (langx.isString(selector)) {
+            try {
+                return nativeMatchesSelector.call(elm, selector.replace(/\[([^=]+)=\s*([^'"\]]+?)\s*\]/g, '[$1="$2"]'));
+            } catch (matchError) {
+                //console.log(matchError);
+            }
+            return local.match(elm, selector);
+        } else if (langx.isArrayLike(selector)) {
+            return langx.inArray(elm, selector) > -1;
+        } else if (langx.isPlainObject(selector)) {
+            return local.check(elm, selector);
+        } else {
+            return elm === selector;
+        }
+
+    }
+
+    /*
+     * Get the nearest next sibing of the specitied element , optional matched by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     * @param {Boolean Optional} adjacent
+     */
+    function nextSibling(elm, selector, adjacent) {
+        var node = elm.nextSibling;
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    return node;
+                }
+                if (adjacent) {
+                    break;
+                }
+            }
+            node = node.nextSibling;
+        }
+        return null;
+    }
+
+    /*
+     * Get the next siblings of the specified element , optional filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
+    function nextSiblings(elm, selector) {
+        var node = elm.nextSibling,
+            ret = [];
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    ret.push(node);
+                }
+            }
+            node = node.nextSibling;
+        }
+        return ret;
+    }
+
+    /*
+     * Get the parent element of the specified element. if a selector is provided, it retrieves the parent element only if it matches that selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
+    function parent(elm, selector) {
+        var node = elm.parentNode;
+        if (node && (!selector || matches(node, selector))) {
+            return node;
+        }
+
+        return null;
+    }
+
+    /*
+     * Get hte nearest previous sibling of the specified element ,optional matched by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     * @param {Boolean Optional } adjacent
+     */
+    function previousSibling(elm, selector, adjacent) {
+        var node = elm.previousSibling;
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    return node;
+                }
+                if (adjacent) {
+                    break;
+                }
+            }
+            node = node.previousSibling;
+        }
+        return null;
+    }
+
+    /*
+     * Get all preceding siblings of each element in the set of matched elements, optionally filtered by a selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
+    function previousSiblings(elm, selector) {
+        var node = elm.previousSibling,
+            ret = [];
+        while (node) {
+            if (node.nodeType == 1) {
+                if (!selector || matches(node, selector)) {
+                    ret.push(node);
+                }
+            }
+            node = node.previousSibling;
+        }
+        return ret;
+    }
+
+    /*
+     * Selects all sibling elements that follow after the “prev” element, have the same parent, and match the filtering “siblings” selector.
+     * @param {HTMLElement} elm
+     * @param {String optionlly} selector
+     */
+    function siblings(elm, selector) {
+        var node = elm.parentNode.firstChild,
+            ret = [];
+        while (node) {
+            if (node.nodeType == 1 && node !== elm) {
+                if (!selector || matches(node, selector)) {
+                    ret.push(node);
+                }
+            }
+            node = node.nextSibling;
+        }
+        return ret;
+    }
+
+    var finder = function() {
+        return finder;
+    };
+
+    langx.mixin(finder, {
+
+        ancestor: ancestor,
+
+        ancestors: ancestors,
+
+        byId: byId,
+
+        children: children,
+
+        closest: closest,
+
+        descendant: descendant,
+
+        descendants: descendants,
+
+        find: find,
+
+        findAll: findAll,
+
+        firstChild: firstChild,
+
+        lastChild: lastChild,
+
+        matches: matches,
+
+        nextSibling: nextSibling,
+
+        nextSiblings: nextSiblings,
+
+        parent: parent,
+
+        previousSibling,
+
+        previousSiblings,
+
+        pseudos: local.pseudos,
+
+        siblings: siblings
+    });
+
+    return skylark.attach("domx.finder", finder);
+});
+define('skylark-domx-finder/main',[
+	"./finder"
+],function(finder){
+	return finder;
+});
+define('skylark-domx-finder', ['skylark-domx-finder/main'], function (main) { return main; });
+
+define('skylark-domx-data/data',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-finder",
+    "skylark-domx-noder"
+], function(skylark, langx, finder,noder) {
+    var map = Array.prototype.map,
+        filter = Array.prototype.filter,
+        camelCase = langx.camelCase,
+        deserializeValue = langx.deserializeValue,
+
+        capitalRE = /([A-Z])/g,
+        propMap = {
+            'tabindex': 'tabIndex',
+            'readonly': 'readOnly',
+            'for': 'htmlFor',
+            'class': 'className',
+            'maxlength': 'maxLength',
+            'cellspacing': 'cellSpacing',
+            'cellpadding': 'cellPadding',
+            'rowspan': 'rowSpan',
+            'colspan': 'colSpan',
+            'usemap': 'useMap',
+            'frameborder': 'frameBorder',
+            'contenteditable': 'contentEditable'
+        };
+
+    // Strip and collapse whitespace according to HTML spec
+    function stripAndCollapse( value ) {
+      var tokens = value.match( /[^\x20\t\r\n\f]+/g ) || [];
+      return tokens.join( " " );
+    }
+
+
+    var valHooks = {
+      option: {
+        get: function( elem ) {
+          var val = elem.getAttribute( "value" );
+          return val != null ?  val :  stripAndCollapse(text( elem ) );
+        }
+      },
+      select: {
+        get: function( elem ) {
+          var value, option, i,
+            options = elem.options,
+            index = elem.selectedIndex,
+            one = elem.type === "select-one",
+            values = one ? null : [],
+            max = one ? index + 1 : options.length;
+
+          if ( index < 0 ) {
+            i = max;
+
+          } else {
+            i = one ? index : 0;
+          }
+
+          // Loop through all the selected options
+          for ( ; i < max; i++ ) {
+            option = options[ i ];
+
+            if ( option.selected &&
+
+                // Don't return options that are disabled or in a disabled optgroup
+                !option.disabled &&
+                ( !option.parentNode.disabled ||
+                  !noder.nodeName( option.parentNode, "optgroup" ) ) ) {
+
+              // Get the specific value for the option
+              value = val(option);
+
+              // We don't need an array for one selects
+              if ( one ) {
+                return value;
+              }
+
+              // Multi-Selects return an array
+              values.push( value );
+            }
+          }
+
+          return values;
+        },
+
+        set: function( elem, value ) {
+          var optionSet, option,
+            options = elem.options,
+            values = langx.makeArray( value ),
+            i = options.length;
+
+          while ( i-- ) {
+            option = options[ i ];
+
+            /* eslint-disable no-cond-assign */
+
+            if ( option.selected =
+              langx.inArray( valHooks.option.get( option ), values ) > -1
+            ) {
+              optionSet = true;
+            }
+
+            /* eslint-enable no-cond-assign */
+          }
+
+          // Force browsers to behave consistently when non-matching value is set
+          if ( !optionSet ) {
+            elem.selectedIndex = -1;
+          }
+          return values;
+        }
+      }
+    };
+
+
+    // Radios and checkboxes getter/setter
+    langx.each( [ "radio", "checkbox" ], function() {
+      valHooks[ this ] = {
+        set: function( elem, value ) {
+          if ( langx.isArray( value ) ) {
+            return ( elem.checked = langx.inArray( val(elem), value ) > -1 );
+          }
+        }
+      };
+    });
+
+
+
+    /*
+     * Set property values
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
+
+    function setAttribute(elm, name, value) {
+        if (value == null) {
+            elm.removeAttribute(name);
+        } else {
+            elm.setAttribute(name, value);
+        }
+    }
+
+    function aria(elm, name, value) {
+        return this.attr(elm, "aria-" + name, value);
+    }
+
+    /*
+     * Set property values
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
+
+    function attr(elm, name, value) {
+        if (value === undefined) {
+            if (typeof name === "object") {
+                for (var attrName in name) {
+                    attr(elm, attrName, name[attrName]);
+                }
+                return this;
+            } else {
+                if (elm.hasAttribute && elm.hasAttribute(name)) {
+                    return elm.getAttribute(name);
+                }
+            }
+        } else {
+            elm.setAttribute(name, value);
+            return this;
+        }
+    }
+
+
+    /*
+     *  Read all "data-*" attributes from a node
+     * @param {Object} elm  
+     */
+
+    function _attributeData(elm) {
+        var store = {}
+        langx.each(elm.attributes || [], function(i, attr) {
+            if (attr.name.indexOf('data-') == 0) {
+                store[camelCase(attr.name.replace('data-', ''))] = deserializeValue(attr.value);
+            }
+        })
+        return store;
+    }
+
+    function _store(elm, confirm) {
+        var store = elm["_$_store"];
+        if (!store && confirm) {
+            store = elm["_$_store"] = _attributeData(elm);
+        }
+        return store;
+    }
+
+    function _getData(elm, name) {
+        if (name === undefined) {
+            return _store(elm, true);
+        } else {
+            var store = _store(elm);
+            if (store) {
+                if (name in store) {
+                    return store[name];
+                }
+                var camelName = camelCase(name);
+                if (camelName in store) {
+                    return store[camelName];
+                }
+            }
+            var attrName = 'data-' + name.replace(capitalRE, "-$1").toLowerCase()
+            return attr(elm, attrName);
+        }
+
+    }
+
+    function _setData(elm, name, value) {
+        var store = _store(elm, true);
+        store[camelCase(name)] = value;
+    }
+
+
+    /*
+     * xxx
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
+    function data(elm, name, value) {
+
+        if (value === undefined) {
+            if (typeof name === "object") {
+                for (var dataAttrName in name) {
+                    _setData(elm, dataAttrName, name[dataAttrName]);
+                }
+                return this;
+            } else {
+                return _getData(elm, name);
+            }
+        } else {
+            _setData(elm, name, value);
+            return this;
+        }
+    } 
+    /*
+     * Remove from the element all items that have not yet been run. 
+     * @param {Object} elm  
+     */
+
+    function cleanData(elm) {
+        if (elm["_$_store"]) {
+            delete elm["_$_store"];
+        }
+    }
+
+    /*
+     * Remove a previously-stored piece of data. 
+     * @param {Object} elm  
+     * @param {Array} names
+     */
+    function removeData(elm, names) {
+        if (names) {
+            if (langx.isString(names)) {
+                names = names.split(/\s+/);
+            }
+            var store = _store(elm, true);
+            names.forEach(function(name) {
+                delete store[name];
+            });            
+        } else {
+            cleanData(elm);
+        }
+        return this;
+    }
+
+    /*
+     * xxx 
+     * @param {Object} elm  
+     * @param {Array} names
+     */
+    function pluck(nodes, property) {
+        return map.call(nodes, function(elm) {
+            return elm[property];
+        });
+    }
+
+    /*
+     * Get or set the value of an property for the specified element.
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
+    function prop(elm, name, value) {
+        name = propMap[name] || name;
+        if (value === undefined) {
+            return elm[name];
+        } else {
+            elm[name] = value;
+            return this;
+        }
+    }
+
+    /*
+     * remove Attributes  
+     * @param {Object} elm  
+     * @param {String} name
+     */
+    function removeAttr(elm, name) {
+        name.split(' ').forEach(function(attr) {
+            setAttribute(elm, attr);
+        });
+        return this;
+    }
+
+
+    /*
+     * Remove the value of a property for the first element in the set of matched elements or set one or more properties for every matched element.
+     * @param {Object} elm  
+     * @param {String} name
+     */
+    function removeProp(elm, name) {
+        name.split(' ').forEach(function(prop) {
+            delete elm[prop];
+        });
+        return this;
+    }
+
+    /*   
+     * Get the combined text contents of each element in the set of matched elements, including their descendants, or set the text contents of the matched elements.  
+     * @param {Object} elm  
+     * @param {String} txt
+     */
+    function text(elm, txt) {
+        if (txt === undefined) {
+            return elm.textContent;
+        } else {
+            elm.textContent = txt == null ? '' : '' + txt;
+            return this;
+        }
+    }
+
+    /*   
+     * Get the current value of the first element in the set of matched elements or set the value of every matched element.
+     * @param {Object} elm  
+     * @param {String} value
+     */
+    function val(elm, value) {
+        var hooks = valHooks[ elm.type ] || valHooks[ elm.nodeName.toLowerCase() ];
+        if (value === undefined) {
+/*
+            if (elm.multiple) {
+                // select multiple values
+                var selectedOptions = filter.call(finder.find(elm, "option"), (function(option) {
+                    return option.selected;
+                }));
+                return pluck(selectedOptions, "value");
+            } else {
+                if (/input|textarea/i.test(elm.tagName)) {
+                  return elm.value;
+                }
+                return text(elm);
+            }
+*/
+
+          if ( hooks &&  "get" in hooks &&  ( ret = hooks.get( elm, "value" ) ) !== undefined ) {
+            return ret;
+          }
+
+          ret = elm.value;
+
+          // Handle most common string cases
+          if ( typeof ret === "string" ) {
+            return ret.replace( /\r/g, "" );
+          }
+
+          // Handle cases where value is null/undef or number
+          return ret == null ? "" : ret;
+
+        } else {
+/*          
+            if (/input|textarea/i.test(elm.tagName)) {
+              elm.value = value;
+            } else {
+              text(elm,value);
+            }
+            return this;
+*/
+          // Treat null/undefined as ""; convert numbers to string
+          if ( value == null ) {
+            value = "";
+
+          } else if ( typeof value === "number" ) {
+            value += "";
+
+          } else if ( langx.isArray( value ) ) {
+            value = langx.map( value, function( value1 ) {
+              return value1 == null ? "" : value1 + "";
+            } );
+          }
+
+          // If set returns undefined, fall back to normal setting
+          if ( !hooks || !( "set" in hooks ) || hooks.set( elm, value, "value" ) === undefined ) {
+            elm.value = value;
+          }
+        }      
+    }
+
+
+    finder.pseudos.data = function( elem, i, match,dataName ) {
+        return !!data( elem, dataName || match[3]);
+    };
+   
+
+    function datax() {
+        return datax;
+    }
+
+    langx.mixin(datax, {
+        aria: aria,
+
+        attr: attr,
+
+        cleanData: cleanData,
+
+        data: data,
+
+        pluck: pluck,
+
+        prop: prop,
+
+        removeAttr: removeAttr,
+
+        removeData: removeData,
+
+        removeProp: removeProp,
+
+        text: text,
+
+        val: val,
+
+        valHooks : valHooks
+    });
+
+    return skylark.attach("domx.data", datax);
+});
+define('skylark-domx-data/main',[
+	"./data"
+],function(data){
+	return data;
+});
+define('skylark-domx-data', ['skylark-domx-data/main'], function (main) { return main; });
+
+define('skylark-domx-eventer/eventer',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-browser",
+    "skylark-domx-finder",
+    "skylark-domx-noder",
+    "skylark-domx-data"
+], function(skylark, langx, browser, finder, noder, datax) {
+    var mixin = langx.mixin,
+        each = langx.each,
+        slice = Array.prototype.slice,
+        uid = langx.uid,
+        ignoreProperties = /^([A-Z]|returnValue$|layer[XY]$)/,
+        eventMethods = {
+            preventDefault: "isDefaultPrevented",
+            stopImmediatePropagation: "isImmediatePropagationStopped",
+            stopPropagation: "isPropagationStopped"
+        },
+        readyRE = /complete|loaded|interactive/;
+
+    function compatible(event, source) {
+        if (source || !event.isDefaultPrevented) {
+            if (!source) {
+                source = event;
+            }
+
+            langx.each(eventMethods, function(name, predicate) {
+                var sourceMethod = source[name];
+                event[name] = function() {
+                    this[predicate] = langx.returnTrue;
+                    return sourceMethod && sourceMethod.apply(source, arguments);
+                }
+                event[predicate] = langx.returnFalse;
+            });
+        }
+        return event;
+    }
+
+    function parse(event) {
+        var segs = ("" + event).split(".");
+        return {
+            type: segs[0],
+            ns: segs.slice(1).sort().join(" ")
+        };
+    }
+
+    //create a custom dom event
+    var createEvent = (function() {
+        var EventCtors = [
+                window["CustomEvent"], // 0 default
+                window["CompositionEvent"], // 1
+                window["DragEvent"], // 2
+                window["Event"], // 3
+                window["FocusEvent"], // 4
+                window["KeyboardEvent"], // 5
+                window["MessageEvent"], // 6
+                window["MouseEvent"], // 7
+                window["MouseScrollEvent"], // 8
+                window["MouseWheelEvent"], // 9
+                window["MutationEvent"], // 10
+                window["ProgressEvent"], // 11
+                window["TextEvent"], // 12
+                window["TouchEvent"], // 13
+                window["UIEvent"], // 14
+                window["WheelEvent"], // 15
+                window["ClipboardEvent"] // 16
+            ],
+            NativeEvents = {
+                "compositionstart": 1, // CompositionEvent
+                "compositionend": 1, // CompositionEvent
+                "compositionupdate": 1, // CompositionEvent
+
+                "beforecopy": 16, // ClipboardEvent
+                "beforecut": 16, // ClipboardEvent
+                "beforepaste": 16, // ClipboardEvent
+                "copy": 16, // ClipboardEvent
+                "cut": 16, // ClipboardEvent
+                "paste": 16, // ClipboardEvent
+
+                "drag": 2, // DragEvent
+                "dragend": 2, // DragEvent
+                "dragenter": 2, // DragEvent
+                "dragexit": 2, // DragEvent
+                "dragleave": 2, // DragEvent
+                "dragover": 2, // DragEvent
+                "dragstart": 2, // DragEvent
+                "drop": 2, // DragEvent
+
+                "abort": 3, // Event
+                "change": 3, // Event
+                "error": 3, // Event
+                "selectionchange": 3, // Event
+                "submit": 3, // Event
+                "reset": 3, // Event
+
+                "focus": 4, // FocusEvent
+                "blur": 4, // FocusEvent
+                "focusin": 4, // FocusEvent
+                "focusout": 4, // FocusEvent
+
+                "keydown": 5, // KeyboardEvent
+                "keypress": 5, // KeyboardEvent
+                "keyup": 5, // KeyboardEvent
+
+                "message": 6, // MessageEvent
+
+                "click": 7, // MouseEvent
+                "contextmenu": 7, // MouseEvent
+                "dblclick": 7, // MouseEvent
+                "mousedown": 7, // MouseEvent
+                "mouseup": 7, // MouseEvent
+                "mousemove": 7, // MouseEvent
+                "mouseover": 7, // MouseEvent
+                "mouseout": 7, // MouseEvent
+                "mouseenter": 7, // MouseEvent
+                "mouseleave": 7, // MouseEvent
+
+
+                "textInput": 12, // TextEvent
+
+                "touchstart": 13, // TouchEvent
+                "touchmove": 13, // TouchEvent
+                "touchend": 13, // TouchEvent
+
+                "load": 14, // UIEvent
+                "resize": 14, // UIEvent
+                "select": 14, // UIEvent
+                "scroll": 14, // UIEvent
+                "unload": 14, // UIEvent,
+
+                "wheel": 15 // WheelEvent
+            };
+
+        function getEventCtor(type) {
+            var idx = NativeEvents[type];
+            if (!idx) {
+                idx = 0;
+            }
+            return EventCtors[idx];
+        }
+
+        return function(type, props) {
+            //create a custom dom event
+
+            if (langx.isString(type)) {
+                props = props || {};
+            } else {
+                props = type || {};
+                type = props.type || "";
+            }
+            var parsed = parse(type);
+            type = parsed.type;
+
+            props = langx.mixin({
+                bubbles: true,
+                cancelable: true
+            }, props);
+
+            if (parsed.ns) {
+                props.namespace = parsed.ns;
+            }
+
+            var ctor = getEventCtor(type),
+                e = new ctor(type, props);
+
+            langx.safeMixin(e, props);
+
+            return compatible(e);
+        };
+    })();
+
+    function createProxy(src, props) {
+        var key,
+            proxy = {
+                originalEvent: src
+            };
+        for (key in src) {
+            if (key !== "keyIdentifier" && !ignoreProperties.test(key) && src[key] !== undefined) {
+                proxy[key] = src[key];
+            }
+        }
+        if (props) {
+            langx.mixin(proxy, props);
+        }
+        return compatible(proxy, src);
+    }
+
+    var
+        specialEvents = {},
+        focusinSupported = "onfocusin" in window,
+        focus = { focus: "focusin", blur: "focusout" },
+        hover = { mouseenter: "mouseover", mouseleave: "mouseout" },
+        realEvent = function(type) {
+            return hover[type] || (focusinSupported && focus[type]) || type;
+        },
+        handlers = {},
+        EventBindings = langx.klass({
+            init: function(target, event) {
+                this._target = target;
+                this._event = event;
+                this._bindings = [];
+            },
+
+            add: function(fn, options) {
+                var bindings = this._bindings,
+                    binding = {
+                        fn: fn,
+                        options: langx.mixin({}, options)
+                    };
+
+                bindings.push(binding);
+
+                var self = this;
+                if (!self._listener) {
+                    self._listener = function(domEvt) {
+                        var elm = this,
+                            e = createProxy(domEvt),
+                            args = domEvt._args,
+                            bindings = self._bindings,
+                            ns = e.namespace;
+
+                        if (langx.isDefined(args)) {
+                            args = [e].concat(args);
+                        } else {
+                            args = [e];
+                        }
+
+                        langx.each(bindings, function(idx, binding) {
+                            var match = elm;
+                            if (e.isImmediatePropagationStopped && e.isImmediatePropagationStopped()) {
+                                return false;
+                            }
+                            var fn = binding.fn,
+                                options = binding.options || {},
+                                selector = options.selector,
+                                one = options.one,
+                                data = options.data;
+
+                            if (ns && ns != options.ns && options.ns.indexOf(ns) === -1) {
+                                return;
+                            }
+                            if (selector) {
+                                match = finder.closest(e.target, selector);
+                                if (match && match !== elm) {
+                                    langx.mixin(e, {
+                                        currentTarget: match,
+                                        liveFired: elm
+                                    });
+                                } else {
+                                    return;
+                                }
+                            }
+
+                            var originalEvent = self._event;
+                            if (originalEvent in hover) {
+                                var related = e.relatedTarget;
+                                if (related && (related === match || noder.contains(match, related))) {
+                                    return;
+                                }
+                            }
+
+                            if (langx.isDefined(data)) {
+                                e.data = data;
+                            }
+
+                            if (one) {
+                                self.remove(fn, options);
+                            }
+
+                            var result = fn.apply(match, args);
+
+                            if (result === false) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                        });;
+                    };
+
+                    var event = self._event;
+                    /*
+                                        if (event in hover) {
+                                            var l = self._listener;
+                                            self._listener = function(e) {
+                                                var related = e.relatedTarget;
+                                                if (!related || (related !== this && !noder.contains(this, related))) {
+                                                    return l.apply(this, arguments);
+                                                }
+                                            }
+                                        }
+                    */
+
+                    if (self._target.addEventListener) {
+                        self._target.addEventListener(realEvent(event), self._listener, false);
+                    } else {
+                        console.warn("invalid eventer object", self._target);
+                    }
+                }
+
+            },
+            remove: function(fn, options) {
+                options = langx.mixin({}, options);
+
+                function matcherFor(ns) {
+                    return new RegExp("(?:^| )" + ns.replace(" ", " .* ?") + "(?: |$)");
+                }
+                var matcher;
+                if (options.ns) {
+                    matcher = matcherFor(options.ns);
+                }
+
+                this._bindings = this._bindings.filter(function(binding) {
+                    var removing = (!fn || fn === binding.fn) &&
+                        (!matcher || matcher.test(binding.options.ns)) &&
+                        (!options.selector || options.selector == binding.options.selector);
+
+                    return !removing;
+                });
+                if (this._bindings.length == 0) {
+                    if (this._target.removeEventListener) {
+                        this._target.removeEventListener(realEvent(this._event), this._listener, false);
+                    }
+                    this._listener = null;
+                }
+            }
+        }),
+        EventsHandler = langx.klass({
+            init: function(elm) {
+                this._target = elm;
+                this._handler = {};
+            },
+
+            // add a event listener
+            // selector Optional
+            register: function(event, callback, options) {
+                // Seperate the event from the namespace
+                var parsed = parse(event),
+                    event = parsed.type,
+                    specialEvent = specialEvents[event],
+                    bindingEvent = specialEvent && (specialEvent.bindType || specialEvent.bindEventName);
+
+                var events = this._handler;
+
+                // Check if there is already a handler for this event
+                if (events[event] === undefined) {
+                    events[event] = new EventBindings(this._target, bindingEvent || event);
+                }
+
+                // Register the new callback function
+                events[event].add(callback, langx.mixin({
+                    ns: parsed.ns
+                }, options)); // options:{selector:xxx}
+            },
+
+            // remove a event listener
+            unregister: function(event, fn, options) {
+                // Check for parameter validtiy
+                var events = this._handler,
+                    parsed = parse(event);
+                event = parsed.type;
+
+                if (event) {
+                    var listener = events[event];
+
+                    if (listener) {
+                        listener.remove(fn, langx.mixin({
+                            ns: parsed.ns
+                        }, options));
+                    }
+                } else {
+                    //remove all events
+                    for (event in events) {
+                        var listener = events[event];
+                        listener.remove(fn, langx.mixin({
+                            ns: parsed.ns
+                        }, options));
+                    }
+                }
+            }
+        }),
+
+        findHandler = function(elm) {
+            var id = uid(elm),
+                handler = handlers[id];
+            if (!handler) {
+                handler = handlers[id] = new EventsHandler(elm);
+            }
+            return handler;
+        };
+
+    /*   
+     * Remove an event handler for one or more events from the specified element.
+     * @param {HTMLElement} elm  
+     * @param {String} events
+     * @param {String　Optional } selector
+     * @param {Function} callback
+     */
+    function off(elm, events, selector, callback) {
+        var $this = this
+        if (langx.isPlainObject(events)) {
+            langx.each(events, function(type, fn) {
+                off(elm, type, selector, fn);
+            })
+            return $this;
+        }
+
+        if (!langx.isString(selector) && !langx.isFunction(callback) && callback !== false) {
+            callback = selector;
+            selector = undefined;
+        }
+
+        if (callback === false) {
+            callback = langx.returnFalse;
+        }
+
+        if (typeof events == "string") {
+            if (events.indexOf(",") > -1) {
+                events = events.split(",");
+            } else {
+                events = events.split(/\s/);
+            }
+        }
+
+        var handler = findHandler(elm);
+
+        if (events) events.forEach(function(event) {
+
+            handler.unregister(event, callback, {
+                selector: selector,
+            });
+        });
+        return this;
+    }
+
+    /*   
+     * Attach an event handler function for one or more events to the selected elements.
+     * @param {HTMLElement} elm  
+     * @param {String} events
+     * @param {String　Optional} selector
+     * @param {Anything Optional} data
+     * @param {Function} callback
+     * @param {Boolean　Optional} one
+     */
+    function on(elm, events, selector, data, callback, one) {
+
+        var autoRemove, delegator;
+        if (langx.isPlainObject(events)) {
+            langx.each(events, function(type, fn) {
+                on(elm, type, selector, data, fn, one);
+            });
+            return this;
+        }
+
+        if (!langx.isString(selector) && !langx.isFunction(callback)) {
+            callback = data;
+            data = selector;
+            selector = undefined;
+        }
+
+        if (langx.isFunction(data)) {
+            callback = data;
+            data = undefined;
+        }
+
+        if (callback === false) {
+            callback = langx.returnFalse;
+        }
+
+        if (typeof events == "string") {
+            if (events.indexOf(",") > -1) {
+                events = events.split(",");
+            } else {
+                events = events.split(/\s/);
+            }
+        }
+
+        var handler = findHandler(elm);
+
+        events.forEach(function(event) {
+            if (event == "ready") {
+                return ready(callback);
+            }
+            handler.register(event, callback, {
+                data: data,
+                selector: selector,
+                one: !!one
+            });
+        });
+        return this;
+    }
+
+    /*   
+     * Attach a handler to an event for the elements. The handler is executed at most once per 
+     * @param {HTMLElement} elm  
+     * @param {String} event
+     * @param {String　Optional} selector
+     * @param {Anything Optional} data
+     * @param {Function} callback
+     */
+    function one(elm, events, selector, data, callback) {
+        on(elm, events, selector, data, callback, 1);
+
+        return this;
+    }
+
+    /*   
+     * Prevents propagation and clobbers the default action of the passed event. The same as calling event.preventDefault() and event.stopPropagation(). 
+     * @param {String} event
+     */
+    function stop(event) {
+        if (window.document.all) {
+            event.keyCode = 0;
+        }
+        if (event.preventDefault) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        return this;
+    }
+    /*   
+     * Execute all handlers and behaviors attached to the matched elements for the given event  
+     * @param {String} evented
+     * @param {String} type
+     * @param {Array or PlainObject } args
+     */
+    function trigger(evented, type, args) {
+        var e;
+        if (type instanceof Event) {
+            e = type;
+        } else {
+            e = createEvent(type, args);
+        }
+        e._args = args;
+
+        var fn = (evented.dispatchEvent || evented.trigger);
+        if (fn) {
+            fn.call(evented, e);
+        } else {
+            console.warn("The evented parameter is not a eventable object");
+        }
+
+        return this;
+    }
+    /*   
+     * Specify a function to execute when the DOM is fully loaded.  
+     * @param {Function} callback
+     */
+    function ready(callback) {
+        // need to check if document.body exists for IE as that browser reports
+        // document ready when it hasn't yet created the body elm
+        if (readyRE.test(document.readyState) && document.body) {
+            langx.defer(callback);
+        } else {
+            document.addEventListener('DOMContentLoaded', callback, false);
+        }
+
+        return this;
+    }
+
+    var keyCodeLookup = {
+        "backspace": 8,
+        "comma": 188,
+        "delete": 46,
+        "down": 40,
+        "end": 35,
+        "enter": 13,
+        "escape": 27,
+        "home": 36,
+        "left": 37,
+        "page_down": 34,
+        "page_up": 33,
+        "period": 190,
+        "right": 39,
+        "space": 32,
+        "tab": 9,
+        "up": 38
+    };
+    //example:
+    //shortcuts(elm).add("CTRL+ALT+SHIFT+X",function(){console.log("test!")});
+    function shortcuts(elm) {
+
+        var registry = datax.data(elm, "shortcuts");
+        if (!registry) {
+            registry = {};
+            datax.data(elm, "shortcuts", registry);
+            var run = function(shortcut, event) {
+                var n = event.metaKey || event.ctrlKey;
+                if (shortcut.ctrl == n && shortcut.alt == event.altKey && shortcut.shift == event.shiftKey) {
+                    if (event.keyCode == shortcut.keyCode || event.charCode && event.charCode == shortcut.charCode) {
+                        event.preventDefault();
+                        if ("keydown" == event.type) {
+                            shortcut.fn(event);
+                        }
+                        return true;
+                    }
+                }
+            };
+            on(elm, "keyup keypress keydown", function(event) {
+                if (!(/INPUT|TEXTAREA/.test(event.target.nodeName))) {
+                    for (var key in registry) {
+                        run(registry[key], event);
+                    }
+                }
+            });
+
+        }
+
+        return {
+            add: function(pattern, fn) {
+                var shortcutKeys;
+                if (pattern.indexOf(",") > -1) {
+                    shortcutKeys = pattern.toLowerCase().split(",");
+                } else {
+                    shortcutKeys = pattern.toLowerCase().split(" ");
+                }
+                shortcutKeys.forEach(function(shortcutKey) {
+                    var setting = {
+                        fn: fn,
+                        alt: false,
+                        ctrl: false,
+                        shift: false
+                    };
+                    shortcutKey.split("+").forEach(function(key) {
+                        switch (key) {
+                            case "alt":
+                            case "ctrl":
+                            case "shift":
+                                setting[key] = true;
+                                break;
+                            default:
+                                setting.charCode = key.charCodeAt(0);
+                                setting.keyCode = keyCodeLookup[key] || key.toUpperCase().charCodeAt(0);
+                        }
+                    });
+                    var regKey = (setting.ctrl ? "ctrl" : "") + "," + (setting.alt ? "alt" : "") + "," + (setting.shift ? "shift" : "") + "," + setting.keyCode;
+                    registry[regKey] = setting;
+                })
+            }
+
+        };
+
+    }
+
+    if (browser.support.transition) {
+        specialEvents.transitionEnd = {
+//          handle: function (e) {
+//            if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
+//          },
+          bindType: browser.support.transition.end,
+          delegateType: browser.support.transition.end
+        }        
+    }
+
+    function eventer() {
+        return eventer;
+    }
+
+    langx.mixin(eventer, {
+        create: createEvent,
+
+        keys: keyCodeLookup,
+
+        off: off,
+
+        on: on,
+
+        one: one,
+
+        proxy: createProxy,
+
+        ready: ready,
+
+        shortcuts: shortcuts,
+
+        special: specialEvents,
+
+        stop: stop,
+
+        trigger: trigger
+
+    });
+
+    return skylark.attach("domx.eventer",eventer);
+});
+define('skylark-domx-eventer/main',[
+	"./eventer"
+],function(eventer){
+	return eventer;
+});
+define('skylark-domx-eventer', ['skylark-domx-eventer/main'], function (main) { return main; });
+
+define('skylark-domx-scripter/scripter',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-finder"
+], function(skylark, langx, noder, finder) {
+
+    var head = document.getElementsByTagName('head')[0],
+        scriptsByUrl = {},
+        scriptElementsById = {},
+        count = 0;
+
+    var rscriptType = ( /^$|^module$|\/(?:java|ecma)script/i );
+
+    function scripter() {
+        return scripter;
+    }
+
+
+    var preservedScriptAttributes = {
+        type: true,
+        src: true,
+        nonce: true,
+        noModule: true
+    };
+
+    function evaluate(code,node, doc ) {
+        doc = doc || document;
+
+        var i, val,
+            script = doc.createElement("script");
+
+        script.text = code;
+        if ( node ) {
+            for ( i in preservedScriptAttributes ) {
+
+                // Support: Firefox 64+, Edge 18+
+                // Some browsers don't support the "nonce" property on scripts.
+                // On the other hand, just using `getAttribute` is not enough as
+                // the `nonce` attribute is reset to an empty string whenever it
+                // becomes browsing-context connected.
+                // See https://github.com/whatwg/html/issues/2369
+                // See https://html.spec.whatwg.org/#nonce-attributes
+                // The `node.getAttribute` check was added for the sake of
+                // `jQuery.globalEval` so that it can fake a nonce-containing node
+                // via an object.
+                val = node[ i ] || node.getAttribute && node.getAttribute( i );
+                if ( val ) {
+                    script.setAttribute( i, val );
+                }
+            }
+        }
+        doc.head.appendChild( script ).parentNode.removeChild( script );
+
+        return this;
+    }
+
+    langx.mixin(scripter, {
+        /*
+         * Load a script from a url into the document.
+         * @param {} url
+         * @param {} loadedCallback
+         * @param {} errorCallback
+         */
+        loadJavaScript: function(url, loadedCallback, errorCallback) {
+            var script = scriptsByUrl[url];
+            if (!script) {
+                script = scriptsByUrl[url] = {
+                    state: 0, //0:unload,1:loaded,-1:loaderror
+                    loadedCallbacks: [],
+                    errorCallbacks: []
+                }
+            }
+
+            script.loadedCallbacks.push(loadedCallback);
+            script.errorCallbacks.push(errorCallback);
+
+            if (script.state === 1) {
+                script.node.onload();
+            } else if (script.state === -1) {
+                script.node.onerror();
+            } else {
+                var node = script.node = document.createElement("script"),
+                    id = script.id = (count++);
+
+                node.type = "text/javascript";
+                node.async = false;
+                node.defer = false;
+                startTime = new Date().getTime();
+                head.appendChild(node);
+
+                node.onload = function() {
+                        script.state = 1;
+
+                        var callbacks = script.loadedCallbacks,
+                            i = callbacks.length;
+
+                        while (i--) {
+                            callbacks[i]();
+                        }
+                        script.loadedCallbacks = [];
+                        script.errorCallbacks = [];
+                    },
+                    node.onerror = function() {
+                        script.state = -1;
+                        var callbacks = script.errorCallbacks,
+                            i = callbacks.length;
+
+                        while (i--) {
+                            callbacks[i]();
+                        }
+                        script.loadedCallbacks = [];
+                        script.errorCallbacks = [];
+                    };
+                node.src = url;
+
+                scriptElementsById[id] = node;
+            }
+            return script.id;
+        },
+        /*
+         * Remove the specified script from the document.
+         * @param {Number} id
+         */
+        deleteJavaScript: function(id) {
+            var node = scriptElementsById[id];
+            if (node) {
+                var url = node.src;
+                noder.remove(node);
+                delete scriptElementsById[id];
+                delete scriptsByUrl[url];
+            }
+        },
+
+        evaluate : evaluate,
+
+        html : function(node,value) {
+
+            var result = noder.html(node,value);
+
+            if (value !== undefined) {
+                var scripts = node.querySelectorAll('script');
+
+                for (var i =0; i<scripts.length; i++) {
+                    var node1 = scripts[i];
+                    if (rscriptType.test( node1.type || "" ) ) {
+                      evaluate(node1.textContent,node1);
+                    }
+                }       
+                return this;         
+            } else {
+                return result;
+            }
+
+
+
+        }
+    });
+
+    return skylark.attach("domx.scripter", scripter);
+});
+define('skylark-domx-scripter/main',[
+	"./scripter"
+],function(scripter){
+	return scripter;
+});
+define('skylark-domx-scripter', ['skylark-domx-scripter/main'], function (main) { return main; });
+
+define('skylark-domx-query/query',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-data",
+    "skylark-domx-eventer",
+    "skylark-domx-finder",
+    "skylark-domx-scripter"
+], function(skylark, langx, noder, datax, eventer,  finder, scripter) {
+    var some = Array.prototype.some,
+        push = Array.prototype.push,
+        every = Array.prototype.every,
+        concat = Array.prototype.concat,
+        slice = Array.prototype.slice,
+        map = Array.prototype.map,
+        filter = Array.prototype.filter,
+        forEach = Array.prototype.forEach,
+        indexOf = Array.prototype.indexOf,
+        sort = Array.prototype.sort,
+        isQ;
+
+    var rquickExpr = /^(?:[^#<]*(<[\w\W]+>)[^>]*$|#([\w\-]*)$)/;
+
+    var funcArg = langx.funcArg,
+        isArrayLike = langx.isArrayLike,
+        isString = langx.isString,
+        uniq = langx.uniq,
+        isFunction = langx.isFunction;
+
+    var type = langx.type,
+        isArray = langx.isArray,
+
+        isWindow = langx.isWindow,
+
+        isDocument = langx.isDocument,
+
+        isObject = langx.isObject,
+
+        isPlainObject = langx.isPlainObject,
+
+        compact = langx.compact,
+
+        flatten = langx.flatten,
+
+        camelCase = langx.camelCase,
+
+        dasherize = langx.dasherize,
+        children = finder.children;
+
+    function wrapper_map(func, context) {
+        return function() {
+            var self = this,
+                params = slice.call(arguments);
+            var result = langx.map(self, function(elem, idx) {
+                return func.apply(context, [elem].concat(params));
+            });
+            return query(uniq(result));
+        }
+    }
+
+    function wrapper_selector(func, context, last) {
+        return function(selector) {
+            var self = this,
+                params = slice.call(arguments);
+            var result = this.map(function(idx, elem) {
+                // if (elem.nodeType == 1) {
+                //if (elem.querySelector) {
+                    return func.apply(context, last ? [elem] : [elem, selector]);
+                //}
+            });
+            if (last && selector) {
+                return result.filter(selector);
+            } else {
+                return result;
+            }
+        }
+    }
+
+    function wrapper_selector_until(func, context, last) {
+        return function(util, selector) {
+            var self = this,
+                params = slice.call(arguments);
+            //if (selector === undefined) { //TODO : needs confirm?
+            //    selector = util;
+            //    util = undefined;
+            //}
+            var result = this.map(function(idx, elem) {
+                // if (elem.nodeType == 1) { // TODO
+                //if (elem.querySelector) {
+                    return func.apply(context, last ? [elem, util] : [elem, selector, util]);
+                //}
+            });
+            if (last && selector) {
+                return result.filter(selector);
+            } else {
+                return result;
+            }
+        }
+    }
+
+
+    function wrapper_every_act(func, context) {
+        return function() {
+            var self = this,
+                params = slice.call(arguments);
+            this.each(function(idx,node) {
+                func.apply(context, [this].concat(params));
+            });
+            return self;
+        }
+    }
+
+    function wrapper_every_act_firstArgFunc(func, context, oldValueFunc) {
+        return function(arg1) {
+            var self = this,
+                params = slice.call(arguments);
+            forEach.call(self, function(elem, idx) {
+                var newArg1 = funcArg(elem, arg1, idx, oldValueFunc(elem));
+                func.apply(context, [elem, arg1].concat(params.slice(1)));
+            });
+            return self;
+        }
+    }
+
+    function wrapper_some_chk(func, context) {
+        return function() {
+            var self = this,
+                params = slice.call(arguments);
+            return some.call(self, function(elem) {
+                return func.apply(context, [elem].concat(params));
+            });
+        }
+    }
+
+    function wrapper_name_value(func, context, oldValueFunc) {
+        return function(name, value) {
+            var self = this,
+                params = slice.call(arguments);
+
+            if (langx.isPlainObject(name) || langx.isDefined(value)) {
+                forEach.call(self, function(elem, idx) {
+                    var newValue;
+                    if (oldValueFunc) {
+                        newValue = funcArg(elem, value, idx, oldValueFunc(elem, name));
+                    } else {
+                        newValue = value
+                    }
+                    func.apply(context, [elem].concat(params));
+                });
+                return self;
+            } else {
+                if (self[0]) {
+                    return func.apply(context, [self[0], name]);
+                }
+            }
+
+        }
+    }
+
+    function wrapper_value(func, context, oldValueFunc) {
+        return function(value) {
+            var self = this;
+
+            if (langx.isDefined(value)) {
+                forEach.call(self, function(elem, idx) {
+                    var newValue;
+                    if (oldValueFunc) {
+                        newValue = funcArg(elem, value, idx, oldValueFunc(elem));
+                    } else {
+                        newValue = value
+                    }
+                    func.apply(context, [elem, newValue]);
+                });
+                return self;
+            } else {
+                if (self[0]) {
+                    return func.apply(context, [self[0]]);
+                }
+            }
+
+        }
+    }
+
+    var NodeList = langx.klass({
+        klassName: "SkNodeList",
+        init: function(selector, context) {
+            var self = this,
+                match, nodes, node, props;
+
+            if (selector) {
+                self.context = context = context || noder.doc();
+
+                if (isString(selector)) {
+                    // a html string or a css selector is expected
+                    self.selector = selector;
+
+                    if (selector.charAt(0) === "<" && selector.charAt(selector.length - 1) === ">" && selector.length >= 3) {
+                        match = [null, selector, null];
+                    } else {
+                        match = rquickExpr.exec(selector);
+                    }
+
+                    if (match) {
+                        if (match[1]) {
+                            // if selector is html
+                            nodes = noder.createFragment(selector);
+
+                            if (langx.isPlainObject(context)) {
+                                props = context;
+                            }
+
+                        } else {
+                            node = finder.byId(match[2], noder.ownerDoc(context));
+
+                            if (node) {
+                                // if selector is id
+                                nodes = [node];
+                            }
+
+                        }
+                    } else {
+                        // if selector is css selector
+                        if (langx.isString(context)) {
+                            context = finder.find(context);
+                        }
+
+                        nodes = finder.descendants(context, selector);
+                    }
+                } else {
+                    if (selector !== window && isArrayLike(selector)) {
+                        // a dom node array is expected
+                        nodes = selector;
+                    } else {
+                        // a dom node is expected
+                        nodes = [selector];
+                    }
+                    //self.add(selector, false);
+                }
+            }
+
+
+            if (nodes) {
+
+                push.apply(self, nodes);
+
+                if (props) {
+                    for ( var name  in props ) {
+                        // Properties of context are called as methods if possible
+                        if ( langx.isFunction( this[ name ] ) ) {
+                            this[ name ]( props[ name ] );
+                        } else {
+                            this.attr( name, props[ name ] );
+                        }
+                    }
+                }
+            }
+
+            return self;
+        }
+    });
+
+    var query = (function() {
+        isQ = function(object) {
+            return object instanceof NodeList;
+        }
+        init = function(selector, context) {
+            return new NodeList(selector, context);
+        }
+
+        var $ = function(selector, context) {
+            if (isFunction(selector)) {
+                eventer.ready(function() {
+                    selector($);
+                });
+            } else if (isQ(selector)) {
+                return selector;
+            } else {
+                if (context && isQ(context) && isString(selector)) {
+                    return context.find(selector);
+                }
+                return init(selector, context);
+            }
+        };
+
+        $.fn = NodeList.prototype;
+        langx.mixin($.fn, {
+            // `map` and `slice` in the jQuery API work differently
+            // from their array counterparts
+            length : 0,
+
+            map: function(fn) {
+                return $(uniq(langx.map(this, function(el, i) {
+                    return fn.call(el, i, el)
+                })));
+            },
+
+            slice: function() {
+                return $(slice.apply(this, arguments))
+            },
+
+            forEach: function() {
+                return forEach.apply(this,arguments);
+            },
+
+            get: function(idx) {
+                return idx === undefined ? slice.call(this) : this[idx >= 0 ? idx : idx + this.length]
+            },
+
+            indexOf: function() {
+                return indexOf.apply(this,arguments);
+            },
+
+            sort : function() {
+                return sort.apply(this,arguments);
+            },
+
+            toArray: function() {
+                return slice.call(this);
+            },
+
+            size: function() {
+                return this.length
+            },
+
+            //remove: wrapper_every_act(noder.remove, noder),
+            remove : function(selector) {
+                if (selector) {
+                    return this.find(selector).remove();
+                }
+                this.each(function(i,node){
+                    noder.remove(node);
+                });
+                return this;
+            },
+
+            each: function(callback) {
+                langx.each(this, callback);
+                return this;
+            },
+
+            filter: function(selector) {
+                if (isFunction(selector)) return this.not(this.not(selector))
+                return $(filter.call(this, function(element) {
+                    return finder.matches(element, selector)
+                }))
+            },
+
+            add: function(selector, context) {
+                return $(uniq(this.toArray().concat($(selector, context).toArray())));
+            },
+
+            is: function(selector) {
+                if (this.length > 0) {
+                    var self = this;
+                    if (langx.isString(selector)) {
+                        return some.call(self,function(elem) {
+                            return finder.matches(elem, selector);
+                        });
+                    } else if (langx.isArrayLike(selector)) {
+                       return some.call(self,function(elem) {
+                            return langx.inArray(elem, selector) > -1;
+                        });
+                    } else if (langx.isHtmlNode(selector)) {
+                       return some.call(self,function(elem) {
+                            return elem ==  selector;
+                        });
+                    }
+                }
+                return false;
+            },
+            
+            not: function(selector) {
+                var nodes = []
+                if (isFunction(selector) && selector.call !== undefined)
+                    this.each(function(idx,node) {
+                        if (!selector.call(this, idx,node)) nodes.push(this)
+                    })
+                else {
+                    var excludes = typeof selector == 'string' ? this.filter(selector) :
+                        (isArrayLike(selector) && isFunction(selector.item)) ? slice.call(selector) : $(selector)
+                    this.forEach(function(el) {
+                        if (excludes.indexOf(el) < 0) nodes.push(el)
+                    })
+                }
+                return $(nodes)
+            },
+
+            has: function(selector) {
+                return this.filter(function() {
+                    return isObject(selector) ?
+                        noder.contains(this, selector) :
+                        $(this).find(selector).size()
+                })
+            },
+
+            eq: function(idx) {
+                return idx === -1 ? this.slice(idx) : this.slice(idx, +idx + 1);
+            },
+
+            first: function() {
+                return this.eq(0);
+            },
+
+            last: function() {
+                return this.eq(-1);
+            },
+
+            find: wrapper_selector(finder.descendants, finder),
+
+            closest: wrapper_selector(finder.closest, finder),
+            /*
+                        closest: function(selector, context) {
+                            var node = this[0],
+                                collection = false
+                            if (typeof selector == 'object') collection = $(selector)
+                            while (node && !(collection ? collection.indexOf(node) >= 0 : finder.matches(node, selector)))
+                                node = node !== context && !isDocument(node) && node.parentNode
+                            return $(node)
+                        },
+            */
+
+
+            parents: wrapper_selector(finder.ancestors, finder),
+
+            parentsUntil: wrapper_selector_until(finder.ancestors, finder),
+
+
+            parent: wrapper_selector(finder.parent, finder),
+
+            children: wrapper_selector(finder.children, finder),
+
+            contents: wrapper_map(noder.contents, noder),
+
+            empty: wrapper_every_act(noder.empty, noder),
+
+            // `pluck` is borrowed from Prototype.js
+            pluck: function(property) {
+                return langx.map(this, function(el) {
+                    return el[property]
+                })
+            },
+
+            pushStack : function(elms) {
+                var ret = $(elms);
+                ret.prevObject = this;
+                return ret;
+            },
+            
+            replaceWith: function(newContent) {
+                return this.before(newContent).remove();
+            },
+
+            wrap: function(structure) {
+                var func = isFunction(structure)
+                if (this[0] && !func)
+                    var dom = $(structure).get(0),
+                        clone = dom.parentNode || this.length > 1
+
+                return this.each(function(index,node) {
+                    $(this).wrapAll(
+                        func ? structure.call(this, index,node) :
+                        clone ? dom.cloneNode(true) : dom
+                    )
+                })
+            },
+
+            wrapAll: function(wrappingElement) {
+                if (this[0]) {
+                    $(this[0]).before(wrappingElement = $(wrappingElement));
+                    var children;
+                    // drill down to the inmost element
+                    while ((children = wrappingElement.children()).length) {
+                        wrappingElement = children.first();
+                    }
+                    $(wrappingElement).append(this);
+                }
+                return this
+            },
+
+            wrapInner: function(wrappingElement) {
+                var func = isFunction(wrappingElement)
+                return this.each(function(index,node) {
+                    var self = $(this),
+                        contents = self.contents(),
+                        dom = func ? wrappingElement.call(this, index,node) : wrappingElement
+                    contents.length ? contents.wrapAll(dom) : self.append(dom)
+                })
+            },
+
+            unwrap: function(selector) {
+                if (this.parent().children().length === 0) {
+                    // remove dom without text
+                    this.parent(selector).not("body").each(function() {
+                        $(this).replaceWith(document.createTextNode(this.childNodes[0].textContent));
+                    });
+                } else {
+                    this.parent().each(function() {
+                        $(this).replaceWith($(this).children())
+                    });
+                }
+                return this
+            },
+
+            clone: function() {
+                return this.map(function() {
+                    return this.cloneNode(true)
+                })
+            },
+
+
+            toggle: function(setting) {
+                return this.each(function() {
+                    var el = $(this);
+                    (setting === undefined ? el.css("display") == "none" : setting) ? el.show(): el.hide()
+                })
+            },
+
+            prev: function(selector) {
+                return $(this.pluck('previousElementSibling')).filter(selector || '*')
+            },
+
+            prevAll: wrapper_selector(finder.previousSiblings, finder),
+
+            next: function(selector) {
+                return $(this.pluck('nextElementSibling')).filter(selector || '*')
+            },
+
+            nextAll: wrapper_selector(finder.nextSiblings, finder),
+
+            siblings: wrapper_selector(finder.siblings, finder),
+
+            html: wrapper_value(scripter.html, scripter, scripter.html),
+
+            text: wrapper_value(datax.text, datax, datax.text),
+
+            attr: wrapper_name_value(datax.attr, datax, datax.attr),
+
+            removeAttr: wrapper_every_act(datax.removeAttr, datax),
+
+            prop: wrapper_name_value(datax.prop, datax, datax.prop),
+
+            removeProp: wrapper_every_act(datax.removeProp, datax),
+
+            data: wrapper_name_value(datax.data, datax, datax.data),
+
+            removeData: wrapper_every_act(datax.removeData, datax),
+
+            val: wrapper_value(datax.val, datax, datax.val),
+
+            index: function(elem) {
+                if (elem) {
+                    return this.indexOf($(elem)[0]);
+                } else {
+                    return this.parent().children().indexOf(this[0]);
+                }
+            }
+        });
+
+        // for now
+        $.fn.detach = $.fn.remove;
+
+        $.fn.hover = function(fnOver, fnOut) {
+            return this.mouseenter(fnOver).mouseleave(fnOut || fnOver);
+        };
+
+
+        var traverseNode = noder.traverse;
+
+        function wrapper_node_operation(func, context, oldValueFunc) {
+            return function(html) {
+                var argType, nodes = langx.map(arguments, function(arg) {
+                    argType = type(arg)
+                    return argType == "function" || argType == "object" || argType == "array" || arg == null ?
+                        arg : noder.createFragment(arg)
+                });
+                if (nodes.length < 1) {
+                    return this
+                }
+                this.each(function(idx) {
+                    func.apply(context, [this, nodes, idx > 0]);
+                });
+                return this;
+            }
+        }
+
+
+        $.fn.after = wrapper_node_operation(noder.after, noder);
+
+        $.fn.prepend = wrapper_node_operation(noder.prepend, noder);
+
+        $.fn.before = wrapper_node_operation(noder.before, noder);
+
+        $.fn.append = wrapper_node_operation(noder.append, noder);
+
+
+        langx.each( {
+            appendTo: "append",
+            prependTo: "prepend",
+            insertBefore: "before",
+            insertAfter: "after",
+            replaceAll: "replaceWith"
+        }, function( name, original ) {
+            $.fn[ name ] = function( selector ) {
+                var elems,
+                    ret = [],
+                    insert = $( selector ),
+                    last = insert.length - 1,
+                    i = 0;
+
+                for ( ; i <= last; i++ ) {
+                    elems = i === last ? this : this.clone( true );
+                    $( insert[ i ] )[ original ]( elems );
+
+                    // Support: Android <=4.0 only, PhantomJS 1 only
+                    // .get() because push.apply(_, arraylike) throws on ancient WebKit
+                    push.apply( ret, elems.get() );
+                }
+
+                return this.pushStack( ret );
+            };
+        } );
+
+/*
+        $.fn.insertAfter = function(html) {
+            $(html).after(this);
+            return this;
+        };
+
+        $.fn.insertBefore = function(html) {
+            $(html).before(this);
+            return this;
+        };
+
+        $.fn.appendTo = function(html) {
+            $(html).append(this);
+            return this;
+        };
+
+        $.fn.prependTo = function(html) {
+            $(html).prepend(this);
+            return this;
+        };
+
+        $.fn.replaceAll = function(selector) {
+            $(selector).replaceWith(this);
+            return this;
+        };
+*/
+        return $;
+    })();
+
+    (function($) {
+        $.fn.on = wrapper_every_act(eventer.on, eventer);
+
+        $.fn.off = wrapper_every_act(eventer.off, eventer);
+
+        $.fn.trigger = wrapper_every_act(eventer.trigger, eventer);
+
+        ('focusin focusout focus blur load resize scroll unload click dblclick ' +
+            'mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave ' +
+            'change select keydown keypress keyup error transitionEnd').split(' ').forEach(function(event) {
+            $.fn[event] = function(data, callback) {
+                return (0 in arguments) ?
+                    this.on(event, data, callback) :
+                    this.trigger(event)
+            }
+        });
+
+        $.fn.one = function(event, selector, data, callback) {
+            if (!langx.isString(selector) && !langx.isFunction(callback)) {
+                callback = data;
+                data = selector;
+                selector = null;
+            }
+
+            if (langx.isFunction(data)) {
+                callback = data;
+                data = null;
+            }
+
+            return this.on(event, selector, data, callback, 1)
+        };
+
+
+        $.fn.scrollParent = function( includeHidden ) {
+            var position = this.css( "position" ),
+                excludeStaticParent = position === "absolute",
+                overflowRegex = includeHidden ? /(auto|scroll|hidden)/ : /(auto|scroll)/,
+                scrollParent = this.parents().filter( function() {
+                    var parent = $( this );
+                    if ( excludeStaticParent && parent.css( "position" ) === "static" ) {
+                        return false;
+                    }
+                    return overflowRegex.test( parent.css( "overflow" ) + parent.css( "overflow-y" ) +
+                        parent.css( "overflow-x" ) );
+                } ).eq( 0 );
+
+            return position === "fixed" || !scrollParent.length ?
+                $( this[ 0 ].ownerDocument || document ) :
+                scrollParent;
+        };
+
+    })(query);
+
+
+    (function($) {
+        $.fn.end = function() {
+            return this.prevObject || $()
+        }
+
+        $.fn.andSelf = function() {
+            return this.add(this.prevObject || $())
+        }
+
+        $.fn.addBack = function(selector) {
+            if (this.prevObject) {
+                if (selector) {
+                    return this.add(this.prevObject.filter(selector));
+                } else {
+                    return this.add(this.prevObject);
+                }
+            } else {
+                return this;
+            }
+        }
+
+        'filter,add,not,eq,first,last,find,closest,parents,parent,children,siblings,prev,prevAll,next,nextAll'.split(',').forEach(function(property) {
+            var fn = $.fn[property]
+            $.fn[property] = function() {
+                var ret = fn.apply(this, arguments)
+                ret.prevObject = this
+                return ret
+            }
+        })
+    })(query);
+
+
+    (function($) {
+        $.fn.query = $.fn.find;
+
+        $.fn.place = function(refNode, position) {
+            // summary:
+            //      places elements of this node list relative to the first element matched
+            //      by queryOrNode. Returns the original NodeList. See: `dojo/dom-construct.place`
+            // queryOrNode:
+            //      may be a string representing any valid CSS3 selector or a DOM node.
+            //      In the selector case, only the first matching element will be used
+            //      for relative positioning.
+            // position:
+            //      can be one of:
+            //
+            //      -   "last" (default)
+            //      -   "first"
+            //      -   "before"
+            //      -   "after"
+            //      -   "only"
+            //      -   "replace"
+            //
+            //      or an offset in the childNodes
+            if (langx.isString(refNode)) {
+                refNode = finder.descendant(refNode);
+            } else if (isQ(refNode)) {
+                refNode = refNode[0];
+            }
+            return this.each(function(i, node) {
+                switch (position) {
+                    case "before":
+                        noder.before(refNode, node);
+                        break;
+                    case "after":
+                        noder.after(refNode, node);
+                        break;
+                    case "replace":
+                        noder.replace(refNode, node);
+                        break;
+                    case "only":
+                        noder.empty(refNode);
+                        noder.append(refNode, node);
+                        break;
+                    case "first":
+                        noder.prepend(refNode, node);
+                        break;
+                        // else fallthrough...
+                    default: // aka: last
+                        noder.append(refNode, node);
+                }
+            });
+        };
+
+        $.fn.addContent = function(content, position) {
+            if (content.template) {
+                content = langx.substitute(content.template, content);
+            }
+            return this.append(content);
+        };
+
+
+
+        $.fn.disableSelection = ( function() {
+            var eventType = "onselectstart" in document.createElement( "div" ) ?
+                "selectstart" :
+                "mousedown";
+
+            return function() {
+                return this.on( eventType + ".ui-disableSelection", function( event ) {
+                    event.preventDefault();
+                } );
+            };
+        } )();
+
+        $.fn.enableSelection = function() {
+            return this.off( ".ui-disableSelection" );
+        };
+
+        $.fn.reflow = function() {
+            return noder.flow(this[0]);
+        };
+
+        $.fn.isBlockNode = function() {
+            return noder.isBlockNode(this[0]);
+        };
+       
+
+    })(query);
+
+    query.fn.plugin = function(name,options) {
+        var args = slice.call( arguments, 1 ),
+            self = this,
+            returnValue = this;
+
+        this.each(function(){
+            returnValue = plugins.instantiate.apply(self,[this,name].concat(args));
+        });
+        return returnValue;
+    };
+
+
+    query.wraps = {
+        wrapper_node_operation,
+        wrapper_map,
+        wrapper_value,
+        wrapper_selector,
+        wrapper_some_chk,
+        wrapper_selector_until,
+        wrapper_every_act_firstArgFunc,
+        wrapper_every_act,
+        wrapper_name_value
+
+    };
+
+    return skylark.attach("domx.query", query);
+
+});
+define('skylark-domx-query/main',[
+	"./query"
+],function(query){
+	return query;
+});
+define('skylark-domx-query', ['skylark-domx-query/main'], function (main) { return main; });
+
+define('skylark-domx-velm/velm',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-data",
+    "skylark-domx-eventer",
+    "skylark-domx-finder",
+    "skylark-domx-query"
+], function(skylark, langx, noder, datax, eventer, finder, $) {
+    var map = Array.prototype.map,
+        slice = Array.prototype.slice;
+    /*
+     * VisualElement is a skylark class type wrapping a visule dom node,
+     * provides a number of prototype methods and supports chain calls.
+     */
+    var VisualElement = langx.klass({
+        klassName: "VisualElement",
+
+        "_construct": function(node) {
+            if (langx.isString(node)) {
+                if (node.charAt(0) === "<") {
+                    //html
+                    node = noder.createFragment(node)[0];
+                } else {
+                    // id
+                    node = document.getElementById(node);
+                }
+            }
+            this._elm = node;
+        }
+    });
+
+    VisualElement.prototype.$ = VisualElement.prototype.query = function(selector) {
+        return $(selector,this._elm);
+    };
+
+    VisualElement.prototype.elm = function() {
+        return this._elm;
+    };
+
+    /*
+     * the VisualElement object wrapping document.body
+     */
+    var root = new VisualElement(document.body),
+        velm = function(node) {
+            if (node) {
+                return new VisualElement(node);
+            } else {
+                return root;
+            }
+        };
+    /*
+     * Extend VisualElement prototype with wrapping the specified methods.
+     * @param {ArrayLike} fn
+     * @param {Object} context
+     */
+    function _delegator(fn, context) {
+        return function() {
+            var self = this,
+                elem = self._elm,
+                ret = fn.apply(context, [elem].concat(slice.call(arguments)));
+
+            if (ret) {
+                if (ret === context) {
+                    return self;
+                } else {
+                    if (ret instanceof HTMLElement) {
+                        ret = new VisualElement(ret);
+                    } else if (langx.isArrayLike(ret)) {
+                        ret = map.call(ret, function(el) {
+                            if (el instanceof HTMLElement) {
+                                return new VisualElement(el);
+                            } else {
+                                return el;
+                            }
+                        })
+                    }
+                }
+            }
+            return ret;
+        };
+    }
+
+    langx.mixin(velm, {
+        batch: function(nodes, action, args) {
+            nodes.forEach(function(node) {
+                var elm = (node instanceof VisualElement) ? node : velm(node);
+                elm[action].apply(elm, args);
+            });
+
+            return this;
+        },
+
+        root: new VisualElement(document.body),
+
+        VisualElement: VisualElement,
+
+        partial: function(name, fn) {
+            var props = {};
+
+            props[name] = fn;
+
+            VisualElement.partial(props);
+        },
+
+        delegate: function(names, context) {
+            var props = {};
+
+            names.forEach(function(name) {
+                props[name] = _delegator(context[name], context);
+            });
+
+            VisualElement.partial(props);
+        }
+    });
+
+    // from ./datax
+    velm.delegate([
+        "attr",
+        "data",
+        "prop",
+        "removeAttr",
+        "removeData",
+        "text",
+        "val"
+    ], datax);
+
+    // from ./eventer
+    velm.delegate([
+        "off",
+        "on",
+        "one",
+        "shortcuts",
+        "trigger"
+    ], eventer);
+
+    // from ./finder
+    velm.delegate([
+        "ancestor",
+        "ancestors",
+        "children",
+        "descendant",
+        "find",
+        "findAll",
+        "firstChild",
+        "lastChild",
+        "matches",
+        "nextSibling",
+        "nextSiblings",
+        "parent",
+        "previousSibling",
+        "previousSiblings",
+        "siblings"
+    ], finder);
+
+    /*
+     * find a dom element matched by the specified selector.
+     * @param {String} selector
+     */
+    velm.find = function(selector) {
+        if (selector === "body") {
+            return this.root;
+        } else {
+            return this.root.descendant(selector);
+        }
+    };
+
+
+    // from ./noder
+    velm.delegate([
+        "after",
+        "append",
+        "before",
+        "clone",
+        "contains",
+        "contents",
+        "empty",
+        "html",
+        "isChildOf",
+        "isDocument",
+        "isInDocument",
+        "isWindow",
+        "ownerDoc",
+        "prepend",
+        "remove",
+        "removeChild",
+        "replace",
+        "reverse",
+        "throb",
+        "traverse",
+        "wrapper",
+        "wrapperInner",
+        "unwrap"
+    ], noder);
+
+    // events
+    var events = [ 'keyUp', 'keyDown', 'mouseOver', 'mouseOut', 'click', 'dblClick', 'change' ];
+
+    events.forEach( function ( event ) {
+
+        var method = event;
+
+        VisualElement.prototype[method ] = function ( callback ) {
+
+            this.on( event.toLowerCase(), callback);
+
+            return this;
+        };
+
+    });
+
+
+    return skylark.attach("domx.velm", velm);
+});
+define('skylark-domx-velm/main',[
+	"./velm"
+],function(velm){
+	return velm;
+});
+define('skylark-domx-velm', ['skylark-domx-velm/main'], function (main) { return main; });
+
+define('skylark-domx-styler/main',[
+	"./styler",
+	"skylark-domx-velm",
+	"skylark-domx-query"	
+],function(styler,velm,$){
+	
+    // from ./styler
+    velm.delegate([
+        "addClass",
+        "className",
+        "css",
+        "hasClass",
+        "hide",
+        "isInvisible",
+        "removeClass",
+        "show",
+        "toggleClass"
+    ], styler);
+
+    // properties
+
+    var properties = [ 'position', 'left', 'top', 'right', 'bottom', 'width', 'height', 'border', 'borderLeft',
+    'borderTop', 'borderRight', 'borderBottom', 'borderColor', 'display', 'overflow', 'margin', 'marginLeft', 'marginTop', 'marginRight', 'marginBottom', 'padding', 'paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'color',
+    'background', 'backgroundColor', 'opacity', 'fontSize', 'fontWeight', 'textAlign', 'textDecoration', 'textTransform', 'cursor', 'zIndex' ];
+
+    properties.forEach( function ( property ) {
+
+        var method = property;
+
+        VisualElement.prototype[method ] = function (value) {
+
+            this.css( property, value );
+
+            return this;
+
+        };
+
+    });
+
+
+    $.fn.style = $.wraps.wrapper_name_value(styler.css, styler);
+
+    $.fn.css = $.wraps.wrapper_name_value(styler.css, styler);
+
+    //hasClass(name)
+    $.fn.hasClass = $.wraps.wrapper_some_chk(styler.hasClass, styler);
+
+    //addClass(name)
+    $.fn.addClass = $.wraps.wrapper_every_act_firstArgFunc(styler.addClass, styler, styler.className);
+
+    //removeClass(name)
+    $.fn.removeClass = $.wraps.wrapper_every_act_firstArgFunc(styler.removeClass, styler, styler.className);
+
+    //toogleClass(name,when)
+    $.fn.toggleClass = $.wraps.wrapper_every_act_firstArgFunc(styler.toggleClass, styler, styler.className);
+
+    $.fn.replaceClass = function(newClass, oldClass) {
+        this.removeClass(oldClass);
+        this.addClass(newClass);
+        return this;
+    };
+
+    $.fn.replaceClass = function(newClass, oldClass) {
+        this.removeClass(oldClass);
+        this.addClass(newClass);
+        return this;
+    };
+        
+	return styler;
+});
+define('skylark-domx-styler', ['skylark-domx-styler/main'], function (main) { return main; });
 
 define('skylark-domx-geom/geom',[
     "skylark-langx/skylark",
@@ -6312,8 +9823,124 @@ define('skylark-domx-geom/geom',[
     return skylark.attach("domx.geom", geom);
 });
 define('skylark-domx-geom/main',[
-	"./geom"
-],function(geom){
+	"./geom",
+	"skylark-domx-velm",
+	"skylark-domx-query"		
+],function(geom,velm,$){
+   // from ./geom
+    velm.delegate([
+        "borderExtents",
+        "boundingPosition",
+        "boundingRect",
+        "clientHeight",
+        "clientSize",
+        "clientWidth",
+        "contentRect",
+        "height",
+        "marginExtents",
+        "offsetParent",
+        "paddingExtents",
+        "pagePosition",
+        "pageRect",
+        "relativePosition",
+        "relativeRect",
+        "scrollIntoView",
+        "scrollLeft",
+        "scrollTop",
+        "size",
+        "width"
+    ], geom);
+
+    $.fn.offset = $.wraps.wrapper_value(geom.pagePosition, geom, geom.pagePosition);
+
+    $.fn.scrollTop = $.wraps.wrapper_value(geom.scrollTop, geom);
+
+    $.fn.scrollLeft = $.wraps.wrapper_value(geom.scrollLeft, geom);
+
+    $.fn.position =  function(options) {
+        if (!this.length) return
+
+        if (options) {
+            if (options.of && options.of.length) {
+                options = langx.clone(options);
+                options.of = options.of[0];
+            }
+            return this.each( function() {
+                geom.posit(this,options);
+            });
+        } else {
+            var elem = this[0];
+
+            return geom.relativePosition(elem);
+
+        }             
+    };
+
+    $.fn.offsetParent = $.wraps.wrapper_map(geom.offsetParent, geom);
+
+
+    $.fn.size = wrapper_value(geom.size, geom);
+
+    $.fn.width = wrapper_value(geom.width, geom, geom.width);
+
+    $.fn.height = wrapper_value(geom.height, geom, geom.height);
+
+    $.fn.clientSize = wrapper_value(geom.clientSize, geom.clientSize);
+    
+    ['width', 'height'].forEach(function(dimension) {
+        var offset, Dimension = dimension.replace(/./, function(m) {
+            return m[0].toUpperCase()
+        });
+
+        $.fn['outer' + Dimension] = function(margin, value) {
+            if (arguments.length) {
+                if (typeof margin !== 'boolean') {
+                    value = margin;
+                    margin = false;
+                }
+            } else {
+                margin = false;
+                value = undefined;
+            }
+
+            if (value === undefined) {
+                var el = this[0];
+                if (!el) {
+                    return undefined;
+                }
+                var cb = geom.size(el);
+                if (margin) {
+                    var me = geom.marginExtents(el);
+                    cb.width = cb.width + me.left + me.right;
+                    cb.height = cb.height + me.top + me.bottom;
+                }
+                return dimension === "width" ? cb.width : cb.height;
+            } else {
+                return this.each(function(idx, el) {
+                    var mb = {};
+                    var me = geom.marginExtents(el);
+                    if (dimension === "width") {
+                        mb.width = value;
+                        if (margin) {
+                            mb.width = mb.width - me.left - me.right
+                        }
+                    } else {
+                        mb.height = value;
+                        if (margin) {
+                            mb.height = mb.height - me.top - me.bottom;
+                        }
+                    }
+                    geom.size(el, mb);
+                })
+
+            }
+        };
+    })
+
+    $.fn.innerWidth = wrapper_value(geom.clientWidth, geom, geom.clientWidth);
+
+    $.fn.innerHeight = wrapper_value(geom.clientHeight, geom, geom.clientHeight);
+
 	return geom;
 });
 define('skylark-domx-geom', ['skylark-domx-geom/main'], function (main) { return main; });
