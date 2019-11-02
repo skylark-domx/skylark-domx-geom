@@ -3509,7 +3509,7 @@ define('skylark-langx/langx',[
     "./strings",
     "./topic",
     "./types"
-], function(skylark,arrays,ArrayStore,aspect,async,datetimes,Deferred,Evented,funcs,hoster,klass,numbers,objects,tateful,strings,topic,types) {
+], function(skylark,arrays,ArrayStore,aspect,async,datetimes,Deferred,Evented,funcs,hoster,klass,numbers,objects,Stateful,strings,topic,types) {
     "use strict";
     var toString = {}.toString,
         concat = Array.prototype.concat,
@@ -3592,9 +3592,7 @@ define('skylark-langx/langx',[
         hoster : hoster,
 
         klass : klass,
-
-        Restful: Restful,
-        
+       
         Stateful: Stateful,
 
         topic : topic
@@ -5841,6 +5839,23 @@ define('skylark-domx-query/query',[
         dasherize = langx.dasherize,
         children = finder.children;
 
+    function wrapper_node_operation(func, context, oldValueFunc) {
+        return function(html) {
+            var argType, nodes = langx.map(arguments, function(arg) {
+                argType = type(arg)
+                return argType == "function" || argType == "object" || argType == "array" || arg == null ?
+                    arg : noder.createFragment(arg)
+            });
+            if (nodes.length < 1) {
+                return this
+            }
+            this.each(function(idx) {
+                func.apply(context, [this, nodes, idx > 0]);
+            });
+            return this;
+        }
+    }
+
     function wrapper_map(func, context) {
         return function() {
             var self = this,
@@ -6227,6 +6242,8 @@ define('skylark-domx-query/query',[
 
             empty: wrapper_every_act(noder.empty, noder),
 
+            html: wrapper_every_act(noder.html, noder),
+
             // `pluck` is borrowed from Prototype.js
             pluck: function(property) {
                 return langx.map(this, function(el) {
@@ -6341,23 +6358,6 @@ define('skylark-domx-query/query',[
 
 
         var traverseNode = noder.traverse;
-
-        function wrapper_node_operation(func, context, oldValueFunc) {
-            return function(html) {
-                var argType, nodes = langx.map(arguments, function(arg) {
-                    argType = type(arg)
-                    return argType == "function" || argType == "object" || argType == "array" || arg == null ?
-                        arg : noder.createFragment(arg)
-                });
-                if (nodes.length < 1) {
-                    return this
-                }
-                this.each(function(idx) {
-                    func.apply(context, [this, nodes, idx > 0]);
-                });
-                return this;
-            }
-        }
 
 
         $.fn.after = wrapper_node_operation(noder.after, noder);
@@ -6814,7 +6814,7 @@ define('skylark-domx-styler/main',[
 
         var method = property;
 
-        VisualElement.prototype[method ] = function (value) {
+        velm.VisualElement.prototype[method ] = function (value) {
 
             this.css( property, value );
 
@@ -7920,9 +7920,9 @@ define('skylark-domx-geom/geom',[
     return skylark.attach("domx.geom", geom);
 });
 define('skylark-domx-geom/main',[
-	"./geom",
-	"skylark-domx-velm",
-	"skylark-domx-query"		
+    "./geom",
+    "skylark-domx-velm",
+    "skylark-domx-query"        
 ],function(geom,velm,$){
    // from ./geom
     velm.delegate([
@@ -7976,13 +7976,13 @@ define('skylark-domx-geom/main',[
     $.fn.offsetParent = $.wraps.wrapper_map(geom.offsetParent, geom);
 
 
-    $.fn.size = wrapper_value(geom.size, geom);
+    $.fn.size = $.wraps.wrapper_value(geom.size, geom);
 
-    $.fn.width = wrapper_value(geom.width, geom, geom.width);
+    $.fn.width = $.wraps.wrapper_value(geom.width, geom, geom.width);
 
-    $.fn.height = wrapper_value(geom.height, geom, geom.height);
+    $.fn.height = $.wraps.wrapper_value(geom.height, geom, geom.height);
 
-    $.fn.clientSize = wrapper_value(geom.clientSize, geom.clientSize);
+    $.fn.clientSize = $.wraps.wrapper_value(geom.clientSize, geom.clientSize);
     
     ['width', 'height'].forEach(function(dimension) {
         var offset, Dimension = dimension.replace(/./, function(m) {
@@ -8034,11 +8034,11 @@ define('skylark-domx-geom/main',[
         };
     })
 
-    $.fn.innerWidth = wrapper_value(geom.clientWidth, geom, geom.clientWidth);
+    $.fn.innerWidth = $.wraps.wrapper_value(geom.clientWidth, geom, geom.clientWidth);
 
-    $.fn.innerHeight = wrapper_value(geom.clientHeight, geom, geom.clientHeight);
+    $.fn.innerHeight = $.wraps.wrapper_value(geom.clientHeight, geom, geom.clientHeight);
 
-	return geom;
+    return geom;
 });
 define('skylark-domx-geom', ['skylark-domx-geom/main'], function (main) { return main; });
 

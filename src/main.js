@@ -1,7 +1,7 @@
 define([
-	"./geom",
-	"skylark-domx-velm",
-	"skylark-domx-query"		
+    "./geom",
+    "skylark-domx-velm",
+    "skylark-domx-query"        
 ],function(geom,velm,$){
    // from ./geom
     velm.delegate([
@@ -55,13 +55,13 @@ define([
     $.fn.offsetParent = $.wraps.wrapper_map(geom.offsetParent, geom);
 
 
-    $.fn.size = wrapper_value(geom.size, geom);
+    $.fn.size = $.wraps.wrapper_value(geom.size, geom);
 
-    $.fn.width = wrapper_value(geom.width, geom, geom.width);
+    $.fn.width = $.wraps.wrapper_value(geom.width, geom, geom.width);
 
-    $.fn.height = wrapper_value(geom.height, geom, geom.height);
+    $.fn.height = $.wraps.wrapper_value(geom.height, geom, geom.height);
 
-    $.fn.clientSize = wrapper_value(geom.clientSize, geom.clientSize);
+    $.fn.clientSize = $.wraps.wrapper_value(geom.clientSize, geom.clientSize);
     
     ['width', 'height'].forEach(function(dimension) {
         var offset, Dimension = dimension.replace(/./, function(m) {
@@ -113,9 +113,9 @@ define([
         };
     })
 
-    $.fn.innerWidth = wrapper_value(geom.clientWidth, geom, geom.clientWidth);
+    $.fn.innerWidth = $.wraps.wrapper_value(geom.clientWidth, geom, geom.clientWidth);
 
-    $.fn.innerHeight = wrapper_value(geom.clientHeight, geom, geom.clientHeight);
+    $.fn.innerHeight = $.wraps.wrapper_value(geom.clientHeight, geom, geom.clientHeight);
 
-	return geom;
+    return geom;
 });
