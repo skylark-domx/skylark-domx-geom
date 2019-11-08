@@ -6242,7 +6242,7 @@ define('skylark-domx-query/query',[
 
             empty: wrapper_every_act(noder.empty, noder),
 
-            html: wrapper_every_act(noder.html, noder),
+            html: wrapper_value(noder.html, noder),
 
             // `pluck` is borrowed from Prototype.js
             pluck: function(property) {
@@ -7920,10 +7920,11 @@ define('skylark-domx-geom/geom',[
     return skylark.attach("domx.geom", geom);
 });
 define('skylark-domx-geom/main',[
+    "skylark-langx/langx",
     "./geom",
     "skylark-domx-velm",
     "skylark-domx-query"        
-],function(geom,velm,$){
+],function(langx,geom,velm,$){
    // from ./geom
     velm.delegate([
         "borderExtents",

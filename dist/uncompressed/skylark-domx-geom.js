@@ -1149,10 +1149,11 @@ define('skylark-domx-geom/geom',[
     return skylark.attach("domx.geom", geom);
 });
 define('skylark-domx-geom/main',[
+    "skylark-langx/langx",
     "./geom",
     "skylark-domx-velm",
     "skylark-domx-query"        
-],function(geom,velm,$){
+],function(langx,geom,velm,$){
    // from ./geom
     velm.delegate([
         "borderExtents",
