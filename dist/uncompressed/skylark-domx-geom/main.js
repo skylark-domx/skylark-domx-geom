@@ -35,7 +35,9 @@ define([
     $.fn.scrollLeft = $.wraps.wrapper_value(geom.scrollLeft, geom);
 
     $.fn.position =  function(options) {
-        if (!this.length) return
+        if (!this.length) {
+            return this;
+        }
 
         if (options) {
             if (options.of && options.of.length) {
