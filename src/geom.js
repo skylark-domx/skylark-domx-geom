@@ -56,7 +56,6 @@ define([
         }
     }
 
-
     //viewport coordinate
     /*
      * Get or set the viewport position of the specified element border box.
@@ -81,7 +80,6 @@ define([
             return this;
         }
     }
-
 
     /*
      * Get or set the viewport rect of the specified element border box.
@@ -199,27 +197,6 @@ define([
         };
     }
 
-
-    function fullCover(elem, hor, vert) {
-        let vertical = vert;
-        let horizontal = hor;
-        if (langx.isUndefined(horizontal)) {
-            horizontal = true;
-        }
-        if (langx.isUndefined(vertical)) {
-            vertical = true;
-        }
-        elem.style.position = 'absolute';
-        if (horizontal) {
-            elem.style.left = 0;
-            elem.style.right = 0;
-        }
-        if (vertical) {
-            elem.style.top = 0;
-            elem.style.bottom = 0;
-        }
-    }
-
     /*
      * Get the document size.
      * @param {HTMLDocument} doc
@@ -255,31 +232,6 @@ define([
             });
             return this;
         }
-    }
-
-    /**
-     * Check if a DOM element in completely visible in the viewport
-     *
-     * @method isVisible
-     * @param {DOM} elm DOM element to test.
-     * @return {Boolean} True if the element is inside of the browser viewport.
-     */
-    function isVisible(elm)   {
-        var top = elm.offsetTop;
-        var left = elm.offsetLeft;
-        var width = elm.offsetWidth;
-        var height = elm.offsetHeight;
-
-        while(elm.offsetParent)  {
-            elm = elm.offsetParent;
-            top += elm.offsetTop;
-            left += elm.offsetLeft;
-        }
-
-        return value = top >= window.pageYOffset && 
-                       left >= window.pageXOffset && 
-                       (top + height) <= (window.pageYOffset + window.innerHeight) && 
-                       (left + width) <= (window.pageXOffset + window.innerWidth);
     }
 
     /*
@@ -358,10 +310,11 @@ define([
     //coordinate to the document
     function pagePosition(elm, coords) {
         if (coords === undefined) {
-            var obj = elm.getBoundingClientRect()
+            var obj = elm.getBoundingClientRect(),
+                w = elm.ownerDocument.defaultView;
             return {
-                left: obj.left + window.pageXOffset,
-                top: obj.top + window.pageYOffset
+                left: obj.left + w.pageXOffset,
+                top: obj.top + w.pageYOffset
             }
         } else {
             var // Get *real* offsetParent
@@ -386,10 +339,11 @@ define([
      */
     function pageRect(elm, coords) {
         if (coords === undefined) {
-            var obj = elm.getBoundingClientRect()
+            var obj = elm.getBoundingClientRect(),
+                w = elm.ownerDocument.defaultView;
             return {
-                left: obj.left + window.pageXOffset,
-                top: obj.top + window.pageYOffset,
+                left: obj.left + w.pageXOffset,
+                top: obj.top + w.pageYOffset,
                 width: Math.round(obj.width),
                 height: Math.round(obj.height)
             }
@@ -608,53 +562,6 @@ define([
         }
     }
 
-    /**
-     * Check if a DOM element is out of the window and how far it is, returns object with x and y values.
-     * 
-     * If the value is 0 the element is inside the window on that axis.
-     *
-     * @method testAxis
-     * @param {DOM} elm DOM element to test.
-     * @return {Vector2} Distance outside of the viewport.
-     */
-    function testAxis(elm) {
-        var top = elm.offsetTop;
-        var left = elm.offsetLeft;
-        var width = elm.offsetWidth;
-        var height = elm.offsetHeight;
-
-        while(elm.offsetParent) {
-            elm = elm.offsetParent;
-            top += elm.offsetTop;
-            left += elm.offsetLeft;
-        }
-
-        var result = {x: 0, y: 0};
-
-        //Over the top of the window
-        if(top < window.pageYOffset) {
-            result.y = top - window.pageYOffset;
-        }
-        //Bellow the window
-        else if((top + height) > (window.pageYOffset + window.innerHeight))
-        {
-            result.y = (top + height) - (window.pageYOffset + window.innerHeight);
-        }
-
-        //Left to the window
-        if(left < window.pageXOffset) {
-            result.x = left - window.pageXOffset;
-        }
-        //Right to the window
-        else if((left + width) > (window.pageXOffset + window.innerWidth))
-        {
-            result.x = (left + width) - (window.pageXOffset + window.innerWidth);
-        }
-
-        return result;
-    }
-
-
     function geom() {
         return geom;
     }
@@ -674,13 +581,9 @@ define([
 
         contentRect: contentRect,
 
-        fullCover,
-
         getDocumentSize: getDocumentSize,
 
         height: height,
-
-        isVisible,
 
         marginExtents: marginExtents,
 
@@ -712,16 +615,9 @@ define([
 
         size: size,
 
-        testAxis,
-
         width: width
     });
 
-
-    /*
-     * Position an element relative to the window, document, another element, or the cursor/mouse.
-     * see https://jqueryui.com/position/
-     */
     ( function() {
         var max = Math.max,
             abs = Math.abs,
