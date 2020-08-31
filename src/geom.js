@@ -562,6 +562,44 @@ define([
         }
     }
 
+    function testAxis(elm) {
+       
+        var top = elm.offsetTop;
+        var left = elm.offsetLeft;
+        var width = elm.offsetWidth;
+        var height = elm.offsetHeight;
+
+        while(elm.offsetParent) {
+            elm = elm.offsetParent;
+            top += elm.offsetTop;
+            left += elm.offsetLeft;
+        }
+
+        var result = {x: 0, y: 0};
+
+        //Over the top of the window
+        if(top < window.pageYOffset) {
+            result.y = top - window.pageYOffset;
+        }
+        //Bellow the window
+        else if((top + height) > (window.pageYOffset + window.innerHeight))
+        {
+            result.y = (top + height) - (window.pageYOffset + window.innerHeight);
+        }
+
+        //Left to the window
+        if(left < window.pageXOffset) {
+            result.x = left - window.pageXOffset;
+        }
+        //Right to the window
+        else if((left + width) > (window.pageXOffset + window.innerWidth))
+        {
+            result.x = (left + width) - (window.pageXOffset + window.innerWidth);
+        }
+
+        return result;
+    };    
+
     function geom() {
         return geom;
     }
@@ -614,6 +652,8 @@ define([
         scrollTop: scrollTop,
 
         size: size,
+
+        testAxis,
 
         width: width
     });
