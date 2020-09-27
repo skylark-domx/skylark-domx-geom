@@ -123,6 +123,8 @@ define('skylark-domx-geom/geom',[
 
         return (cachedScrollbarWidth = w1 - w2);
     }
+
+    
     /*
      * Get the widths of each border of the specified element.
      * @param {HTMLElement} elm
