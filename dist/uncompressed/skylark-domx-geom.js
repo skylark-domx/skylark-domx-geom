@@ -593,6 +593,13 @@ define('skylark-domx-geom/geom',[
             return this;
         }
     }
+
+    function scrollBy(elm, x, y) {
+        elm.scrollLeft += x;
+        elm.scrollTop += y;
+    }
+
+
     /*
      * Get or set the size of the specified element border box.
      * @param {HTMLElement} elm
@@ -741,6 +748,8 @@ define('skylark-domx-geom/geom',[
 
         scrollTop: scrollTop,
 
+        scrollBy,
+            
         size: size,
 
         testAxis,
