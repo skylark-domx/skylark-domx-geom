@@ -90,7 +90,18 @@ define([
      */
     function boundingRect(elm, coords) {
         if (coords === undefined) {
-            return elm.getBoundingClientRect()
+            if (elm.getBoundingClientRect) {
+                return elm.getBoundingClientRect();
+            } else if (elm == window){
+                return {
+                    top : 0,
+                    left : 0,
+                    bottom : window.innerHeight,
+                    right : window.innerWidth,
+                    height : window.innerHeight,
+                    width : window.innerWidth
+                };
+            }
         } else {
             boundingPosition(elm, coords);
             size(elm, coords);
