@@ -178,9 +178,7 @@ define('skylark-domx-geom/geom',[
      */
     function boundingRect(elm, coords) {
         if (coords === undefined) {
-            if (elm.getBoundingClientRect) {
-                return elm.getBoundingClientRect();
-            } else if (elm == window){
+            if (elm == window || elm == document.documentElement || elm == document.body){
                 return {
                     top : 0,
                     left : 0,
@@ -189,6 +187,8 @@ define('skylark-domx-geom/geom',[
                     height : window.innerHeight,
                     width : window.innerWidth
                 };
+            } else if (elm.getBoundingClientRect) {
+                return elm.getBoundingClientRect();
             }
         } else {
             boundingPosition(elm, coords);
