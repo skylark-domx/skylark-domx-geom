@@ -385,8 +385,8 @@ define([
 
             // Subtract parent offsets and element margins
             return {
-                top: offset.top - parentOffset.top - pbex.top, // - mex.top,
-                left: offset.left - parentOffset.left - pbex.left, // - mex.left
+                top: offset.top - parentOffset.top - pbex.top - mex.top,
+                left: offset.left - parentOffset.left - pbex.left - mex.left
             }
         } else {
             var props = {
