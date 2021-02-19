@@ -1229,6 +1229,8 @@ define('skylark-domx-geom/main',[
         "contentRect",
         "height",
         "marginExtents",
+        "marginRect",
+        "marginSize",
         "offsetParent",
         "paddingExtents",
         "pagePosition",
