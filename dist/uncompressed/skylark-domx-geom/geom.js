@@ -36,7 +36,11 @@ define([
         return (cachedScrollbarWidth = w1 - w2);
     }
 
-    
+
+    function hasScrollbar() {
+        return document.body.scrollHeight > (window.innerHeight || document.documentElement.clientHeight);
+    }
+
     /*
      * Get the widths of each border of the specified element.
      * @param {HTMLElement} elm
@@ -640,6 +644,8 @@ define([
         contentRect: contentRect,
 
         getDocumentSize: getDocumentSize,
+
+        hasScrollbar,
 
         height: height,
 
