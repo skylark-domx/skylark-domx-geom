@@ -485,10 +485,17 @@ define('skylark-domx-geom/geom',[
                 parent = offsetParent(elm);
 
             var props = {
-                top: coords.top + (scrollTop(parent) || 0),
-                left: coords.left + (scrollLeft(parent) || 0)
+                top: coords.top,
+                left: coords.left
+            };
+
+            if (langx.isDefined(props.top)) {
+                props.top = props.top + (scrollTop(parent) || 0);
             }
 
+            if (langx.isDefined(props.left)) {
+                props.left = props.left + (scrollLeft(parent) || 0);
+            } 
 
 
             if (styler.css(elm, "position") == "static") {
