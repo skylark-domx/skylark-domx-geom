@@ -339,6 +339,24 @@ define('skylark-domx-geom/geom',[
         }
     }
 
+
+
+    function inview(elm, cushion) {
+        function calibrate(coords, cushion) {
+            var o = {};
+            cushion = +cushion || 0;
+            o.width = (o.right = coords.right + cushion) - (o.left = coords.left - cushion);
+            o.height = (o.bottom = coords.bottom + cushion) - (o.top = coords.top - cushion);
+            return o;
+        }
+
+        var r = calibrate(boundingRect(elm), cushion),
+            vsize = viewportSize();
+
+        return !!r && r.bottom >= 0 && r.right >= 0 && r.top <= vsize.height && r.left <= vsize.width;
+    }
+
+
     /*
      * Get the widths of each margin of the specified element.
      * @param {HTMLElement} elm
@@ -677,6 +695,14 @@ define('skylark-domx-geom/geom',[
             return this;
         }
     }
+
+
+    function viewportSize(win) {
+        win = win || window;
+
+        return boundingRect(win);
+    }
+
     /*
      * Get or set the size of the specified element border box.
      * @param {HTMLElement} elm
@@ -756,6 +782,8 @@ define('skylark-domx-geom/geom',[
 
         height: height,
 
+        inview,
+
         marginExtents: marginExtents,
 
         marginRect: marginRect,
@@ -789,6 +817,8 @@ define('skylark-domx-geom/geom',[
         size: size,
 
         testAxis,
+
+        viewportSize,
 
         width: width
     });
