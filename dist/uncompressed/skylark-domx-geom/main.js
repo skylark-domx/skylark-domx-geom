@@ -26,9 +26,11 @@ define([
         "scrollIntoView",
         "scrollLeft",
         "scrollTop",
-        "size",
+        "pageSize",
         "width"
-    ], geom);
+    ], geom,{
+        "pageSize" : "size"
+    });
 
     $.fn.offset = $.wraps.wrapper_value(geom.pagePosition, geom, geom.pagePosition);
 
@@ -60,7 +62,7 @@ define([
     $.fn.offsetParent = $.wraps.wrapper_map(geom.offsetParent, geom);
 
 
-    $.fn.size = $.wraps.wrapper_value(geom.size, geom);
+    $.fn.pageSize = $.wraps.wrapper_value(geom.size, geom);
 
     $.fn.width = $.wraps.wrapper_value(geom.width, geom, geom.width);
 
