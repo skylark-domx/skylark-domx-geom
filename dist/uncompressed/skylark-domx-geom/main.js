@@ -2,7 +2,9 @@ define([
     "skylark-langx/langx",
     "./geom",
     "skylark-domx-velm",
-    "skylark-domx-query"        
+    "skylark-domx-query",
+    "./posit",
+    "./scrollToTop"
 ],function(langx,geom,velm,$){
    // from ./geom
     velm.delegate([
