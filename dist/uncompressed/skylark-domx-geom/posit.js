@@ -2,12 +2,9 @@ define([
     "skylark-langx/langx",
     "skylark-domx-noder",
     "skylark-domx-styler",
-	"./geom"
+    "./geom"
 ],function(langx,noder,styler,geom){
   'use strict'
-
-
-
 
     var max = Math.max,
         abs = Math.abs,
@@ -82,7 +79,7 @@ define([
             isWindow = noder.isWindow( withinElement),
             isDocument = !!withinElement && withinElement.nodeType === 9,
             hasOffset = !isWindow && !isDocument,
-            msize = marginSize(withinElement);
+            msize = geom.marginSize(withinElement);
         return {
             element: withinElement,
             isWindow: isWindow,
