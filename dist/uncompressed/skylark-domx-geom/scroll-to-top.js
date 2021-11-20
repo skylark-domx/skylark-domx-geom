@@ -1,5 +1,5 @@
 define([
-    "skylark-langx/langx",
+    "skylark-langx",
     "skylark-domx-styler",
     "./geom"
 ],function(langx,styler,geom) {

@@ -4,7 +4,7 @@ define([
     "skylark-domx-velm",
     "skylark-domx-query",
     "./posit",
-    "./scrollToTop"
+    "./scroll-to-top"
 ],function(langx,geom,velm,$){
    // from ./geom
     velm.delegate([

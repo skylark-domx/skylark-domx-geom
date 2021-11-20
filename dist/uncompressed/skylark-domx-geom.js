@@ -1277,8 +1277,8 @@ define('skylark-domx-geom/posit',[
 
     return geom.posit = posit;
 });
-define('skylark-domx-geom/scrollToTop',[
-    "skylark-langx/langx",
+define('skylark-domx-geom/scroll-to-top',[
+    "skylark-langx",
     "skylark-domx-styler",
     "./geom"
 ],function(langx,styler,geom) {
@@ -1318,7 +1318,7 @@ define('skylark-domx-geom/main',[
     "skylark-domx-velm",
     "skylark-domx-query",
     "./posit",
-    "./scrollToTop"
+    "./scroll-to-top"
 ],function(langx,geom,velm,$){
    // from ./geom
     velm.delegate([
