@@ -10,12 +10,21 @@ define([
     velm.delegate([
         "borderExtents",
         "boundingPosition",
+        "boundingHeight",
         "boundingRect",
+        "boundingSize",
+        "boundingWidth",
+
         "clientHeight",
         "clientSize",
         "clientWidth",
+
+        "contentHeight",
         "contentRect",
-        "height",
+        "contentSize",
+        "contentWidth",
+
+///        "height",
         "marginExtents",
         "marginRect",
         "marginSize",
@@ -28,10 +37,10 @@ define([
         "scrollIntoView",
         "scrollLeft",
         "scrollTop",
-        "pageSize",
-        "width"
+///        "pageSize",
+///        "width"
     ], geom,{
-        "pageSize" : "size"
+///        "pageSize" : "size"
     });
 
     $.fn.offset = $.wraps.wrapper_value(geom.pagePosition, geom, geom.pagePosition);
@@ -64,13 +73,14 @@ define([
     $.fn.offsetParent = $.wraps.wrapper_map(geom.offsetParent, geom);
 
 
-    $.fn.pageSize = $.wraps.wrapper_value(geom.size, geom);
+    ///$.fn.pageSize = $.wraps.wrapper_value(geom.size, geom);
+    $.fn.boundingSize = $.wraps.wrapper_value(geom.boundingSize, geom);
 
     $.fn.width = $.wraps.wrapper_value(geom.width, geom, geom.width);
 
     $.fn.height = $.wraps.wrapper_value(geom.height, geom, geom.height);
 
-    $.fn.clientSize = $.wraps.wrapper_value(geom.clientSize, geom.clientSize);
+    $.fn.clientSize = $.wraps.wrapper_value(geom.clientSize, geom);
     
     ['width', 'height'].forEach(function(dimension) {
         var offset, Dimension = dimension.replace(/./, function(m) {
@@ -93,7 +103,7 @@ define([
                 if (!el) {
                     return undefined;
                 }
-                var cb = geom.size(el);
+                var cb = geom.boundingSize(el);
                 if (margin) {
                     var me = geom.marginExtents(el);
                     cb.width = cb.width + me.left + me.right;
@@ -115,7 +125,7 @@ define([
                             mb.height = mb.height - me.top - me.bottom;
                         }
                     }
-                    geom.size(el, mb);
+                    geom.boundingSize(el, mb);
                 })
 
             }
