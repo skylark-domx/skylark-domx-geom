@@ -303,8 +303,8 @@ define('skylark-domx-geom/geom',[
     function clientSize(elm, dimension) {
         if (dimension == undefined) {
             return {
-                width: elm.clientWidth,
-                height: elm.clientHeight
+                width: elm.clientWidth || elm.innerWidth,
+                height: elm.clientHeight || elm.innerHeight
             }
         } else {
             var isBorderBox = (styler.css(elm, "box-sizing") === "border-box"),
