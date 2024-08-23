@@ -451,7 +451,7 @@ define([
      * @param {HTMLElement} elm
      */
     function paddingExtents(elm) {
-        if (noder.isWindow(elm)) {
+        if (noder.isWindow(elm) || noder.isDoc(elm)) {
             return {
                 left : 0,
                 top : 0,
@@ -743,6 +743,25 @@ define([
         return result;
     };    
 
+
+    function isScrolledIntoView(elem,viewContainer) {
+        if (elem.style.display === "none") {
+            return false;
+        }
+
+        var docViewTop = container.scrollTop,
+            docViewBottom = docViewTop + container.clientHeight,
+            elemTop = elem.offsetTop,
+            elemBottom = elemTop + elem.clientHeight;
+
+        // Is in view if either the top or the bottom of the page is between the
+        // document viewport bounds,
+        // or if the top is above the viewport and the bottom is below it.
+        return (elemTop >= docViewTop && elemTop < docViewBottom)
+                || (elemBottom >= docViewTop && elemBottom < docViewBottom)
+                || (elemTop < docViewTop && elemBottom >= docViewBottom);
+    }
+
     function geom() {
         return geom;
     }
@@ -772,6 +791,8 @@ define([
         height: contentHeight,
 
         inview,
+
+        isScrolledIntoView,
 
         marginExtents: marginExtents,
 

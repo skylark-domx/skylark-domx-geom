@@ -5,5 +5,5 @@
  * @link www.skylarkjs.org
  * @license MIT
  */
-define(["skylark-langx","skylark-domx-styler","./geom"],function(e,r,n){return n.scrollToTop=function(r,n,l,o){var t=parseInt(r.scrollTop),s=0,a=1e3*l/5,c=parseInt(n),u=setInterval(function(){++s<=a&&(r.scrollTop=(c-t)/a*s+t),s>=a+1&&(clearInterval(u),o&&e.debounce(o,1e3)())},5);return this}});
+define(["skylark-langx","skylark-domx-styler","./geom"],function(u,e,r){return r.scrollToTop=function(e,r,n,l){var o=parseInt(e.scrollTop),t=0,s=1e3*n/5,a=parseInt(r),c=setInterval(function(){++t<=s&&(e.scrollTop=(a-o)/s*t+o),1+s<=t&&(clearInterval(c),l)&&u.debounce(l,1e3)()},5);return this}});
 //# sourceMappingURL=sourcemaps/scroll-to-top.js.map

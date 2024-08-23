@@ -5,10 +5,8 @@
  * @link www.skylarkjs.org
  * @license MIT
  */
-(function(factory,globals) {
-  var define = globals.define,
-      require = globals.require,
-      isAmd = (typeof define === 'function' && define.amd),
+(function(factory,globals,define,require) {
+  var isAmd = (typeof define === 'function' && define.amd),
       isCmd = (!isAmd && typeof exports !== 'undefined');
 
   if (!isAmd && !define) {
@@ -539,7 +537,7 @@ define('skylark-domx-geom/geom',[
      * @param {HTMLElement} elm
      */
     function paddingExtents(elm) {
-        if (noder.isWindow(elm)) {
+        if (noder.isWindow(elm) || noder.isDoc(elm)) {
             return {
                 left : 0,
                 top : 0,
@@ -831,6 +829,25 @@ define('skylark-domx-geom/geom',[
         return result;
     };    
 
+
+    function isScrolledIntoView(elem,viewContainer) {
+        if (elem.style.display === "none") {
+            return false;
+        }
+
+        var docViewTop = container.scrollTop,
+            docViewBottom = docViewTop + container.clientHeight,
+            elemTop = elem.offsetTop,
+            elemBottom = elemTop + elem.clientHeight;
+
+        // Is in view if either the top or the bottom of the page is between the
+        // document viewport bounds,
+        // or if the top is above the viewport and the bottom is below it.
+        return (elemTop >= docViewTop && elemTop < docViewBottom)
+                || (elemBottom >= docViewTop && elemBottom < docViewBottom)
+                || (elemTop < docViewTop && elemBottom >= docViewBottom);
+    }
+
     function geom() {
         return geom;
     }
@@ -860,6 +877,8 @@ define('skylark-domx-geom/geom',[
         height: contentHeight,
 
         inview,
+
+        isScrolledIntoView,
 
         marginExtents: marginExtents,
 
@@ -1529,5 +1548,5 @@ define('skylark-domx-geom/main',[
 define('skylark-domx-geom', ['skylark-domx-geom/main'], function (main) { return main; });
 
 
-},this);
+},this,define,require);
 //# sourceMappingURL=sourcemaps/skylark-domx-geom.js.map
